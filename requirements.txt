@@ -1,0 +1,27 @@
+# DriveShield AI - Flask Project Dependencies
+# Recommended Python version: 3.11
+
+# Web framework
+Flask==3.1.3
+Werkzeug==3.1.8
+
+# Environment configuration
+python-dotenv>=1.0,<2.0
+
+# MySQL database
+mysql-connector-python==9.7.0
+
+# Email alerts
+Flask-Mail==0.10.0
+
+# Computer vision and drowsiness detection
+opencv-python==5.0.0.93
+mediapipe==0.10.35
+numpy==2.4.6
+Pillow==12.3.0
+
+# Alarm sound
+pygame==2.6.1
+
+# Nearby hospital API requests
+requests==2.34.2

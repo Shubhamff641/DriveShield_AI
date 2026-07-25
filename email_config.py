@@ -1,0 +1,2 @@
+EMAIL_ADDRESS = "shubham641jadhav@gmail.com"
+EMAIL_PASSWORD = "SHUBHAMJADHAV@96"

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Settings - DriveShield AI</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+    <style>
+        body {
+            min-height: 100vh;
+            background:
+                linear-gradient(
+                    135deg,
+                    #eef4ff 0%,
+                    #f8f9fa 55%,
+                    #eef8f5 100%
+                );
+        }
+
+        .settings-header {
+            color: white;
+            border-radius: 24px;
+            background:
+                linear-gradient(
+                    135deg,
+                    #0d6efd,
+                    #4959c7
+                );
+        }
+
+        .settings-card {
+            border: 0;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .settings-icon {
+            width: 54px;
+            height: 54px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            background: #eef4ff;
+            font-size: 27px;
+        }
+
+        .form-control,
+        .form-select {
+            min-height: 48px;
+            border-radius: 12px;
+        }
+
+        .form-check-input {
+            width: 2.8rem;
+            height: 1.45rem;
+        }
+
+        .profile-image {
+            width: 86px;
+            height: 86px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar navbar-dark bg-primary shadow-sm">
+        <div class="container-fluid">
+
+            <a
+                class="navbar-brand fw-bold"
+                href="{{ url_for('dashboard.dashboard_page') }}"
+            >
+                🚗 DriveShield AI
+            </a>
+
+            <div class="d-flex align-items-center">
+
+                <span class="text-white me-3 d-none d-md-inline">
+                    Welcome,
+                    <b>{{ session["user_name"] }}</b>
+                </span>
+
+                <a
+                    href="{{ url_for('auth.logout') }}"
+                    class="btn btn-light"
+                >
+                    Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container py-5">
+
+        <section class="settings-header shadow p-4 p-md-5 mb-4">
+
+            <div class="row align-items-center g-4">
+
+                <div class="col-md">
+
+                    <p class="mb-2 opacity-75">
+                        DriveShield AI
+                    </p>
+
+                    <h1 class="fw-bold mb-2">
+                        ⚙️ Settings
+                    </h1>
+
+                    <p class="mb-0 opacity-75">
+                        Manage your account, password and safety preferences.
+                    </p>
+                </div>
+
+                <div class="col-md-auto text-md-end">
+
+                    <img
+                        src="{{ url_for('static', filename='uploads/' + (user.profile_image or 'default.png')) }}"
+                        alt="Profile"
+                        class="profile-image rounded-circle border border-4 border-light shadow"
+                    >
+                </div>
+            </div>
+        </section>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+
+            {% if messages %}
+
+                {% for category, message in messages %}
+
+                    <div
+                        class="alert alert-{{ category }} alert-dismissible fade show shadow-sm"
+                        role="alert"
+                    >
+                        {{ message }}
+
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert"
+                        ></button>
+                    </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+        {% endwith %}
+
+        <div class="row g-4">
+
+            <div class="col-lg-6">
+
+                <section class="card settings-card shadow-sm h-100">
+
+                    <div class="card-body p-4">
+
+                        <div class="d-flex align-items-center mb-4">
+
+                            <div class="settings-icon me-3">
+                                👤
+                            </div>
+
+                            <div>
+
+                                <h3 class="h5 fw-bold mb-1">
+                                    Account Details
+                                </h3>
+
+                                <p class="text-muted mb-0">
+                                    Update your personal information.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form method="POST">
+
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="update_account"
+                            >
+
+                            <div class="mb-3">
+
+                                <label class="form-label fw-semibold">
+                                    Full Name
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="full_name"
+                                    class="form-control"
+                                    value="{{ user.full_name }}"
+                                    required
+                                >
+                            </div>
+
+                            <div class="mb-3">
+
+                                <label class="form-label fw-semibold">
+                                    Email Address
+                                </label>
+
+                                <input
+                                    type="email"
+                                    name="email"
+                                    class="form-control"
+                                    value="{{ user.email }}"
+                                    required
+                                >
+                            </div>
+
+                            <div class="mb-4">
+
+                                <label class="form-label fw-semibold">
+                                    Phone Number
+                                </label>
+
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    class="form-control"
+                                    value="{{ user.phone }}"
+                                    required
+                                >
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary w-100 py-2 fw-semibold"
+                            >
+                                Save Account Details
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-6">
+
+                <section class="card settings-card shadow-sm h-100">
+
+                    <div class="card-body p-4">
+
+                        <div class="d-flex align-items-center mb-4">
+
+                            <div class="settings-icon me-3">
+                                🛡️
+                            </div>
+
+                            <div>
+
+                                <h3 class="h5 fw-bold mb-1">
+                                    Safety Preferences
+                                </h3>
+
+                                <p class="text-muted mb-0">
+                                    Configure DriveShield safety behaviour.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form method="POST">
+
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="update_preferences"
+                            >
+
+                            <div class="form-check form-switch mb-4">
+
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    role="switch"
+                                    id="emailAlerts"
+                                    name="email_alerts_enabled"
+                                    {% if preferences.email_alerts_enabled %}
+                                        checked
+                                    {% endif %}
+                                >
+
+                                <label
+                                    class="form-check-label ms-2"
+                                    for="emailAlerts"
+                                >
+                                    <span class="fw-semibold d-block">
+                                        Emergency Email Alerts
+                                    </span>
+
+                                    <small class="text-muted">
+                                        Save whether email alerts should be enabled.
+                                    </small>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-4">
+
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    role="switch"
+                                    id="drowsinessAlarm"
+                                    name="drowsiness_alarm_enabled"
+                                    {% if preferences.drowsiness_alarm_enabled %}
+                                        checked
+                                    {% endif %}
+                                >
+
+                                <label
+                                    class="form-check-label ms-2"
+                                    for="drowsinessAlarm"
+                                >
+                                    <span class="fw-semibold d-block">
+                                        Drowsiness Alarm
+                                    </span>
+
+                                    <small class="text-muted">
+                                        Save the preferred drowsiness alarm state.
+                                    </small>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-4">
+
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    role="switch"
+                                    id="locationSharing"
+                                    name="location_sharing_enabled"
+                                    {% if preferences.location_sharing_enabled %}
+                                        checked
+                                    {% endif %}
+                                >
+
+                                <label
+                                    class="form-check-label ms-2"
+                                    for="locationSharing"
+                                >
+                                    <span class="fw-semibold d-block">
+                                        Location Sharing
+                                    </span>
+
+                                    <small class="text-muted">
+                                        Save whether location sharing is allowed.
+                                    </small>
+                                </label>
+                            </div>
+
+                            <div class="mb-4">
+
+                                <label class="form-label fw-semibold">
+                                    Accident Alert Delay
+                                </label>
+
+                                <select
+                                    name="accident_alert_delay"
+                                    class="form-select"
+                                >
+
+                                    {% for seconds in [10, 20, 30, 45, 60] %}
+
+                                        <option
+                                            value="{{ seconds }}"
+                                            {% if preferences.accident_alert_delay == seconds %}
+                                                selected
+                                            {% endif %}
+                                        >
+                                            {{ seconds }} seconds
+                                        </option>
+
+                                    {% endfor %}
+                                </select>
+
+                                <div class="form-text">
+                                    The preference is stored in your Flask account.
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="btn btn-success w-100 py-2 fw-semibold"
+                            >
+                                Save Safety Preferences
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-6">
+
+                <section class="card settings-card shadow-sm">
+
+                    <div class="card-body p-4">
+
+                        <div class="d-flex align-items-center mb-4">
+
+                            <div class="settings-icon me-3">
+                                🔐
+                            </div>
+
+                            <div>
+
+                                <h3 class="h5 fw-bold mb-1">
+                                    Change Password
+                                </h3>
+
+                                <p class="text-muted mb-0">
+                                    Protect your DriveShield AI account.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form method="POST">
+
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="change_password"
+                            >
+
+                            <div class="mb-3">
+
+                                <label class="form-label fw-semibold">
+                                    Current Password
+                                </label>
+
+                                <input
+                                    type="password"
+                                    name="current_password"
+                                    class="form-control"
+                                    autocomplete="current-password"
+                                    required
+                                >
+                            </div>
+
+                            <div class="mb-3">
+
+                                <label class="form-label fw-semibold">
+                                    New Password
+                                </label>
+
+                                <input
+                                    type="password"
+                                    name="new_password"
+                                    class="form-control"
+                                    minlength="6"
+                                    autocomplete="new-password"
+                                    required
+                                >
+                            </div>
+
+                            <div class="mb-4">
+
+                                <label class="form-label fw-semibold">
+                                    Confirm New Password
+                                </label>
+
+                                <input
+                                    type="password"
+                                    name="confirm_password"
+                                    class="form-control"
+                                    minlength="6"
+                                    autocomplete="new-password"
+                                    required
+                                >
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="btn btn-warning w-100 py-2 fw-semibold"
+                            >
+                                Change Password
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-6">
+
+                <section class="card settings-card shadow-sm h-100">
+
+                    <div class="card-body p-4">
+
+                        <div class="d-flex align-items-center mb-4">
+
+                            <div class="settings-icon me-3">
+                                ℹ️
+                            </div>
+
+                            <div>
+
+                                <h3 class="h5 fw-bold mb-1">
+                                    Account Summary
+                                </h3>
+
+                                <p class="text-muted mb-0">
+                                    Current account and application details.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="list-group list-group-flush">
+
+                            <div class="list-group-item px-0 d-flex justify-content-between">
+                                <span class="text-muted">
+                                    Account ID
+                                </span>
+
+                                <strong>
+                                    #{{ user.id }}
+                                </strong>
+                            </div>
+
+                            <div class="list-group-item px-0 d-flex justify-content-between">
+                                <span class="text-muted">
+                                    Signed in as
+                                </span>
+
+                                <strong class="text-break ms-3">
+                                    {{ user.email }}
+                                </strong>
+                            </div>
+
+                            <div class="list-group-item px-0 d-flex justify-content-between">
+                                <span class="text-muted">
+                                    Default alert delay
+                                </span>
+
+                                <strong>
+                                    {{ preferences.accident_alert_delay }} seconds
+                                </strong>
+                            </div>
+
+                            <div class="list-group-item px-0 d-flex justify-content-between">
+                                <span class="text-muted">
+                                    Application
+                                </span>
+
+                                <strong>
+                                    DriveShield AI
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+
+                            <a
+                                href="{{ url_for('profile.profile_page') }}"
+                                class="btn btn-outline-primary"
+                            >
+                                Open Full Profile
+                            </a>
+
+                            <a
+                                href="{{ url_for('dashboard.dashboard_page') }}"
+                                class="btn btn-outline-secondary"
+                            >
+                                ← Back to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <footer class="text-center text-muted pt-5">
+
+            <p class="fw-semibold mb-1">
+                DriveShield AI
+            </p>
+
+            <p class="mb-0">
+                Developed by Shubham Jadhav and Shubham Kandekar
+            </p>
+        </footer>
+    </main>
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+    ></script>
+</body>
+
+</html>

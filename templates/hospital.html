@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Nearby Hospitals - DriveShield AI</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-secondary shadow">
+    <div class="container-fluid">
+
+        <span class="navbar-brand fw-bold">
+            🏥 DriveShield AI - Nearby Hospitals
+        </span>
+
+        <div>
+            <a
+                href="{{ url_for('dashboard.dashboard_page') }}"
+                class="btn btn-light me-2"
+            >
+                Dashboard
+            </a>
+
+            <a
+                href="{{ url_for('auth.logout') }}"
+                class="btn btn-dark"
+            >
+                Logout
+            </a>
+        </div>
+
+    </div>
+</nav>
+
+<div class="container mt-5">
+
+    <div class="card shadow border-0 mb-4">
+
+        <div class="card-body text-center p-4">
+
+            <h2>🏥 Find Nearby Hospitals</h2>
+
+            <p class="text-muted">
+                Allow location access to search hospitals within 10 kilometres.
+            </p>
+
+            <div
+                id="statusMessage"
+                class="alert alert-info"
+            >
+                Click the button below to start the search.
+            </div>
+
+            <button
+                id="searchButton"
+                class="btn btn-secondary btn-lg"
+                onclick="findNearbyHospitals()"
+            >
+                Find Nearby Hospitals
+            </button>
+
+        </div>
+
+    </div>
+
+    <div
+        id="locationCard"
+        class="card shadow border-0 mb-4 d-none"
+    >
+
+        <div class="card-body">
+
+            <h5 class="mb-3">
+                📍 Your Current Location
+            </h5>
+
+            <div class="row">
+
+                <div class="col-md-4">
+                    <strong>Latitude:</strong>
+                    <span id="currentLatitude">--</span>
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Longitude:</strong>
+                    <span id="currentLongitude">--</span>
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Accuracy:</strong>
+                    <span id="currentAccuracy">--</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card shadow border-0">
+
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                <h3 class="mb-0">
+                    Hospital Results
+                </h3>
+
+                <span
+                    id="resultCount"
+                    class="badge bg-secondary"
+                >
+                    0 found
+                </span>
+
+            </div>
+
+            <div
+                id="hospitalResults"
+                class="row"
+            >
+
+                <div class="col-12 text-center py-5 text-muted">
+
+                    <h1>🏥</h1>
+
+                    <p>
+                        Nearby hospitals will appear here.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+function findNearbyHospitals() {
+
+    const statusMessage =
+        document.getElementById("statusMessage");
+
+    const searchButton =
+        document.getElementById("searchButton");
+
+    statusMessage.className =
+        "alert alert-warning";
+
+    statusMessage.innerText =
+        "Requesting your GPS location...";
+
+    searchButton.disabled = true;
+    searchButton.innerText = "Getting Location...";
+
+    if (!navigator.geolocation) {
+
+        statusMessage.className =
+            "alert alert-danger";
+
+        statusMessage.innerText =
+            "GPS location is not supported by this browser.";
+
+        searchButton.disabled = false;
+        searchButton.innerText =
+            "Find Nearby Hospitals";
+
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        loadHospitals,
+        handleLocationError,
+        {
+            enableHighAccuracy: true,
+            timeout: 30000,
+            maximumAge: 0
+        }
+    );
+}
+
+
+async function loadHospitals(position) {
+
+    const latitude =
+        position.coords.latitude;
+
+    const longitude =
+        position.coords.longitude;
+
+    const accuracy =
+        position.coords.accuracy;
+
+    const statusMessage =
+        document.getElementById("statusMessage");
+
+    const searchButton =
+        document.getElementById("searchButton");
+
+    document.getElementById(
+        "currentLatitude"
+    ).innerText = latitude.toFixed(7);
+
+    document.getElementById(
+        "currentLongitude"
+    ).innerText = longitude.toFixed(7);
+
+    document.getElementById(
+        "currentAccuracy"
+    ).innerText =
+        accuracy.toFixed(2) + " metres";
+
+    document.getElementById(
+        "locationCard"
+    ).classList.remove("d-none");
+
+    if (accuracy > 5000) {
+
+        statusMessage.className =
+            "alert alert-danger";
+
+        statusMessage.innerText =
+            "Location is too inaccurate (" +
+            accuracy.toFixed(0) +
+            " metres). Turn on Precise Location and try again.";
+
+        searchButton.disabled = false;
+        searchButton.innerText = "Try Again";
+
+        return;
+    }
+
+    statusMessage.className =
+        "alert alert-info";
+
+    statusMessage.innerText =
+        "Location received. Searching nearby hospitals...";
+
+    try {
+
+        const response = await fetch(
+            "{{ url_for('hospital.nearby_hospitals') }}",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    latitude: latitude,
+                    longitude: longitude
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+
+            throw new Error(
+                data.message ||
+                "Hospital search failed."
+            );
+        }
+
+        displayHospitals(data.hospitals);
+
+        statusMessage.className =
+            "alert alert-success";
+
+        statusMessage.innerText =
+            data.count +
+            " nearby hospitals found.";
+
+    } catch (error) {
+
+        console.error(error);
+
+        statusMessage.className =
+            "alert alert-danger";
+
+        statusMessage.innerText =
+            "Error: " + error.message;
+
+        displayHospitals([]);
+
+    } finally {
+
+        searchButton.disabled = false;
+
+        searchButton.innerText =
+            "Refresh Hospital Search";
+    }
+}
+
+
+function displayHospitals(hospitals) {
+
+    const hospitalResults =
+        document.getElementById("hospitalResults");
+
+    const resultCount =
+        document.getElementById("resultCount");
+
+    resultCount.innerText =
+        hospitals.length + " found";
+
+    if (hospitals.length === 0) {
+
+        hospitalResults.innerHTML = `
+            <div class="col-12 text-center py-5 text-muted">
+
+                <h1>🏥</h1>
+
+                <h4>No hospitals found</h4>
+
+                <p>
+                    Try again or increase the search radius.
+                </p>
+
+            </div>
+        `;
+
+        return;
+    }
+
+    hospitalResults.innerHTML = "";
+
+    hospitals.forEach(function(hospital, index) {
+
+        const hospitalCard =
+            document.createElement("div");
+
+        hospitalCard.className =
+            "col-md-6 col-lg-4 mb-4";
+
+        hospitalCard.innerHTML = `
+            <div class="card shadow-sm h-100 border-0">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between">
+
+                        <h5 class="card-title">
+                            🏥 ${escapeHtml(hospital.name)}
+                        </h5>
+
+                        <span class="badge bg-primary">
+                            ${hospital.distance} km
+                        </span>
+
+                    </div>
+
+                    <hr>
+
+                    <p class="mb-2">
+
+                        <strong>Address:</strong><br>
+
+                        ${escapeHtml(hospital.address)}
+
+                    </p>
+
+                    <p class="mb-2">
+
+                        <strong>Phone:</strong><br>
+
+                        ${escapeHtml(hospital.phone)}
+
+                    </p>
+
+                    <p class="mb-3">
+
+                        <strong>Coordinates:</strong><br>
+
+                        ${hospital.latitude},
+                        ${hospital.longitude}
+
+                    </p>
+
+                    <a
+                        href="${hospital.maps_url}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="btn btn-success w-100"
+                    >
+                        Open in Google Maps
+                    </a>
+
+                </div>
+
+            </div>
+        `;
+
+        hospitalResults.appendChild(hospitalCard);
+    });
+}
+
+
+function handleLocationError(error) {
+
+    const statusMessage =
+        document.getElementById("statusMessage");
+
+    let errorMessage;
+
+    switch (error.code) {
+
+        case error.PERMISSION_DENIED:
+
+            errorMessage =
+                "Location permission was denied. Please allow location access.";
+
+            break;
+
+        case error.POSITION_UNAVAILABLE:
+
+            errorMessage =
+                "Your current location is unavailable.";
+
+            break;
+
+        case error.TIMEOUT:
+
+            errorMessage =
+                "Location request timed out. Please try again.";
+
+            break;
+
+        default:
+
+            errorMessage =
+                "An unknown location error occurred.";
+    }
+
+    statusMessage.className =
+        "alert alert-danger";
+
+    statusMessage.innerText =
+        errorMessage;
+
+    const searchButton =
+        document.getElementById("searchButton");
+
+    searchButton.disabled = false;
+    searchButton.innerText =
+        "Try Again";
+}
+
+
+function escapeHtml(value) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        value == null ? "" : String(value);
+
+    return div.innerHTML;
+}
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>
