@@ -168,3 +168,32 @@ class Config:
         "MAIL_DEFAULT_SENDER",
         MAIL_USERNAME
     )
+
+    # =====================================================
+    # EMAIL / RESEND HTTPS API
+    # =====================================================
+
+    # Create this key in the Resend dashboard and store it
+    # only in .env locally or Render Environment online.
+    RESEND_API_KEY = os.getenv(
+        "RESEND_API_KEY",
+        ""
+    ).strip()
+
+    # Testing sender:
+    # DriveShield AI <onboarding@resend.dev>
+    #
+    # The resend.dev sender can send only to the email
+    # address connected to your Resend account. For real
+    # emergency contacts, verify your own domain and use:
+    # DriveShield AI <alerts@yourdomain.com>
+    RESEND_FROM_EMAIL = os.getenv(
+        "RESEND_FROM_EMAIL",
+        "DriveShield AI <onboarding@resend.dev>"
+    ).strip()
+
+    # Optional address that receives replies.
+    RESEND_REPLY_TO = os.getenv(
+        "RESEND_REPLY_TO",
+        ""
+    ).strip()
