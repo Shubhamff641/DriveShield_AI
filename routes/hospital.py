@@ -143,27 +143,15 @@ def build_hospital_query(
 ):
 
     return f"""
-    [out:json][timeout:40];
+    [out:json][timeout:18];
     (
-        node["amenity"="hospital"]
+        nwr["amenity"="hospital"]
             (around:{radius},{latitude},{longitude});
 
-        way["amenity"="hospital"]
-            (around:{radius},{latitude},{longitude});
-
-        relation["amenity"="hospital"]
-            (around:{radius},{latitude},{longitude});
-
-        node["healthcare"="hospital"]
-            (around:{radius},{latitude},{longitude});
-
-        way["healthcare"="hospital"]
-            (around:{radius},{latitude},{longitude});
-
-        relation["healthcare"="hospital"]
+        nwr["healthcare"="hospital"]
             (around:{radius},{latitude},{longitude});
     );
-    out center tags;
+    out center tags qt;
     """
 
 
@@ -173,14 +161,24 @@ def build_hospital_query(
 
 def fetch_overpass_data(
     query,
-    request_timeout=20
+    request_timeout=25
 ):
 
+    
     overpass_servers = [
-        "https://overpass.kumi.systems/api/interpreter",
-        "https://overpass-api.de/api/interpreter",
-        "https://lz4.overpass-api.de/api/interpreter"
-    ]
+    (
+        "https://overpass.private.coffee/"
+        "api/interpreter"
+    ),
+    (
+        "https://maps.mail.ru/osm/tools/"
+        "overpass/api/interpreter"
+    ),
+    (
+        "https://overpass-api.de/"
+        "api/interpreter"
+    )
+]
 
     headers = {
         "User-Agent": (
@@ -609,7 +607,7 @@ def nearby_hospitals():
                     DEFAULT_SEARCH_RADIUS_METERS,
                 limit=
                     DEFAULT_HOSPITAL_LIMIT,
-                request_timeout=45
+                request_timeout=25
             )
         )
 
