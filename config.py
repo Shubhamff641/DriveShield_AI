@@ -4,12 +4,17 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 
-# Load values from the .env file placed beside config.py.
 BASE_DIR = os.path.abspath(
     os.path.dirname(__file__)
 )
 
-load_dotenv(os.path.join(BASE_DIR, ".env"), override=True)
+load_dotenv(
+    os.path.join(
+        BASE_DIR,
+        ".env"
+    ),
+    override=True
+)
 
 
 def env_boolean(
@@ -40,8 +45,6 @@ class Config:
     # FLASK
     # =====================================================
 
-    # Keeps the same fallback key used by the original project.
-    # You may optionally override it from .env later.
     SECRET_KEY = os.getenv(
         "SECRET_KEY",
         "DriveShieldAI@2026"
@@ -52,7 +55,6 @@ class Config:
         True
     )
 
-    # Keep the login session valid for 30 days.
     PERMANENT_SESSION_LIFETIME = timedelta(
         days=int(
             os.getenv(
@@ -66,8 +68,6 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
 
-    # Keep False for localhost and local development.
-    # Set True only when the website is permanently hosted on HTTPS.
     SESSION_COOKIE_SECURE = env_boolean(
         "SESSION_COOKIE_SECURE",
         False
@@ -114,7 +114,6 @@ class Config:
         "uploads"
     )
 
-    # Maximum upload size: 10 MB.
     MAX_CONTENT_LENGTH = int(
         os.getenv(
             "MAX_CONTENT_LENGTH_BYTES",
@@ -131,6 +130,10 @@ class Config:
     # =====================================================
     # EMAIL / FLASK-MAIL
     # =====================================================
+    #
+    # These settings are kept because app.py still
+    # initializes the Flask-Mail extension.
+    # Accident alerts now use Brevo HTTPS API instead.
 
     MAIL_SERVER = os.getenv(
         "MAIL_SERVER",
@@ -170,30 +173,25 @@ class Config:
     )
 
     # =====================================================
-    # EMAIL / RESEND HTTPS API
+    # EMAIL / BREVO HTTPS API
     # =====================================================
 
-    # Create this key in the Resend dashboard and store it
-    # only in .env locally or Render Environment online.
-    RESEND_API_KEY = os.getenv(
-        "RESEND_API_KEY",
+    BREVO_API_KEY = os.getenv(
+        "BREVO_API_KEY",
         ""
     ).strip()
 
-    # Testing sender:
-    # DriveShield AI <onboarding@resend.dev>
-    #
-    # The resend.dev sender can send only to the email
-    # address connected to your Resend account. For real
-    # emergency contacts, verify your own domain and use:
-    # DriveShield AI <alerts@yourdomain.com>
-    RESEND_FROM_EMAIL = os.getenv(
-        "RESEND_FROM_EMAIL",
-        "DriveShield AI <onboarding@resend.dev>"
+    BREVO_SENDER_EMAIL = os.getenv(
+        "BREVO_SENDER_EMAIL",
+        ""
     ).strip()
 
-    # Optional address that receives replies.
-    RESEND_REPLY_TO = os.getenv(
-        "RESEND_REPLY_TO",
+    BREVO_SENDER_NAME = os.getenv(
+        "BREVO_SENDER_NAME",
+        "DriveShield AI"
+    ).strip()
+
+    BREVO_REPLY_TO = os.getenv(
+        "BREVO_REPLY_TO",
         ""
     ).strip()
