@@ -13,6 +13,7 @@ from routes.fcm import fcm
 from routes.gps import gps
 from routes.hospital import hospital
 from routes.profile import profile
+from routes.settings import settings
 from routes.test_email import test_email
 
 
@@ -30,6 +31,7 @@ mail.init_app(app)
 app.register_blueprint(auth)
 app.register_blueprint(dashboard)
 app.register_blueprint(profile)
+app.register_blueprint(settings)
 app.register_blueprint(emergency)
 app.register_blueprint(camera)
 app.register_blueprint(accident)
