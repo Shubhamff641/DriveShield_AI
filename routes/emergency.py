@@ -1,16 +1,17 @@
 from flask import (
     Blueprint,
+    flash,
+    jsonify,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
     session,
-    flash,
-    jsonify
+    url_for
 )
 
-from config import Config
 import mysql.connector
+
+from config import Config
 
 
 emergency = Blueprint(
@@ -27,6 +28,11 @@ def get_db():
 
     return mysql.connector.connect(
         host=Config.MYSQL_HOST,
+        port=getattr(
+            Config,
+            "MYSQL_PORT",
+            3306
+        ),
         user=Config.MYSQL_USER,
         password=Config.MYSQL_PASSWORD,
         database=Config.MYSQL_DB
@@ -34,19 +40,264 @@ def get_db():
 
 
 # =========================================================
-# CONVERT CONTACT TO JSON
+# COMMON HELPERS
 # =========================================================
 
-def contact_to_json(contact):
+def value_to_boolean(
+    value,
+    default=False
+):
+
+    if value is None:
+        return default
+
+    if isinstance(
+        value,
+        bool
+    ):
+        return value
+
+    if isinstance(
+        value,
+        (int, float)
+    ):
+        return value != 0
+
+    return str(value).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+        "primary"
+    }
+
+
+def contact_to_json(
+    contact
+):
 
     return {
-        "id": contact["id"],
-        "user_id": contact["user_id"],
-        "contact_name": contact["contact_name"],
-        "relationship": contact["relationship"],
-        "contact_phone": contact["contact_phone"],
-        "contact_email": contact.get("contact_email") or ""
+        "id": int(
+            contact["id"]
+        ),
+
+        "user_id": int(
+            contact["user_id"]
+        ),
+
+        "contact_name": (
+            contact.get(
+                "contact_name"
+            )
+            or ""
+        ),
+
+        "relationship": (
+            contact.get(
+                "relationship"
+            )
+            or ""
+        ),
+
+        "contact_phone": (
+            contact.get(
+                "contact_phone"
+            )
+            or ""
+        ),
+
+        "contact_email": (
+            contact.get(
+                "contact_email"
+            )
+            or ""
+        ),
+
+        "is_primary": bool(
+            contact.get(
+                "is_primary",
+                0
+            )
+        )
     }
+
+
+def select_contact(
+    cursor,
+    contact_id,
+    user_id
+):
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            user_id,
+            contact_name,
+            relationship,
+            contact_phone,
+            contact_email,
+            is_primary
+        FROM emergency_contacts
+        WHERE id = %s
+          AND user_id = %s
+        LIMIT 1
+        """,
+        (
+            contact_id,
+            user_id
+        )
+    )
+
+    return cursor.fetchone()
+
+
+def clear_primary_contacts(
+    cursor,
+    user_id
+):
+
+    cursor.execute(
+        """
+        UPDATE emergency_contacts
+        SET is_primary = 0
+        WHERE user_id = %s
+        """,
+        (
+            user_id,
+        )
+    )
+
+
+def make_contact_primary(
+    cursor,
+    user_id,
+    contact_id
+):
+
+    contact = select_contact(
+        cursor,
+        contact_id,
+        user_id
+    )
+
+    if contact is None:
+        return False
+
+    clear_primary_contacts(
+        cursor,
+        user_id
+    )
+
+    cursor.execute(
+        """
+        UPDATE emergency_contacts
+        SET is_primary = 1
+        WHERE id = %s
+          AND user_id = %s
+        """,
+        (
+            contact_id,
+            user_id
+        )
+    )
+
+    return True
+
+
+def ensure_primary_contact(
+    cursor,
+    user_id
+):
+    """
+    Guarantee that a user who has contacts also has one
+    primary contact.
+
+    The oldest saved contact becomes the fallback primary.
+    """
+
+    cursor.execute(
+        """
+        SELECT id
+        FROM emergency_contacts
+        WHERE user_id = %s
+          AND is_primary = 1
+        ORDER BY id ASC
+        LIMIT 1
+        """,
+        (
+            user_id,
+        )
+    )
+
+    primary_contact = cursor.fetchone()
+
+    if primary_contact is not None:
+        return int(
+            primary_contact["id"]
+        )
+
+    cursor.execute(
+        """
+        SELECT id
+        FROM emergency_contacts
+        WHERE user_id = %s
+        ORDER BY id ASC
+        LIMIT 1
+        """,
+        (
+            user_id,
+        )
+    )
+
+    fallback_contact = cursor.fetchone()
+
+    if fallback_contact is None:
+        return None
+
+    fallback_contact_id = int(
+        fallback_contact["id"]
+    )
+
+    cursor.execute(
+        """
+        UPDATE emergency_contacts
+        SET is_primary = 1
+        WHERE id = %s
+          AND user_id = %s
+        """,
+        (
+            fallback_contact_id,
+            user_id
+        )
+    )
+
+    return fallback_contact_id
+
+
+def user_has_contacts(
+    cursor,
+    user_id
+):
+
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS contact_count
+        FROM emergency_contacts
+        WHERE user_id = %s
+        """,
+        (
+            user_id,
+        )
+    )
+
+    row = cursor.fetchone()
+
+    return int(
+        row["contact_count"]
+        if row is not None
+        else 0
+    ) > 0
 
 
 # =========================================================
@@ -55,24 +306,29 @@ def contact_to_json(contact):
 
 @emergency.route(
     "/emergency",
-    methods=["GET", "POST"]
+    methods=[
+        "GET",
+        "POST"
+    ]
 )
 def emergency_page():
 
     if "user_id" not in session:
 
         return redirect(
-            url_for("auth.login")
+            url_for(
+                "auth.login"
+            )
         )
 
-    db = None
+    database = None
     cursor = None
 
     try:
 
-        db = get_db()
+        database = get_db()
 
-        cursor = db.cursor(
+        cursor = database.cursor(
             dictionary=True
         )
 
@@ -82,37 +338,61 @@ def emergency_page():
 
             contact_name = (
                 request.form
-                .get("contact_name", "")
+                .get(
+                    "contact_name",
+                    ""
+                )
                 .strip()
             )
 
             relationship = (
                 request.form
-                .get("relationship", "")
+                .get(
+                    "relationship",
+                    ""
+                )
                 .strip()
             )
 
             contact_phone = (
                 request.form
-                .get("phone", "")
+                .get(
+                    "phone",
+                    ""
+                )
                 .strip()
             )
 
             contact_email = (
                 request.form
-                .get("contact_email", "")
+                .get(
+                    "contact_email",
+                    ""
+                )
                 .strip()
                 .lower()
             )
 
+            requested_primary = (
+                value_to_boolean(
+                    request.form.get(
+                        "is_primary"
+                    ),
+                    False
+                )
+            )
+
             if (
-                not contact_name or
-                not relationship or
-                not contact_phone
+                not contact_name
+                or not relationship
+                or not contact_phone
             ):
 
                 flash(
-                    "Name, relationship and phone are required.",
+                    (
+                        "Name, relationship and "
+                        "phone are required."
+                    ),
                     "danger"
                 )
 
@@ -120,6 +400,25 @@ def emergency_page():
                     url_for(
                         "emergency.emergency_page"
                     )
+                )
+
+            is_first_contact = (
+                not user_has_contacts(
+                    cursor,
+                    user_id
+                )
+            )
+
+            should_be_primary = (
+                requested_primary
+                or is_first_contact
+            )
+
+            if should_be_primary:
+
+                clear_primary_contacts(
+                    cursor,
+                    user_id
                 )
 
             cursor.execute(
@@ -130,23 +429,43 @@ def emergency_page():
                     contact_name,
                     relationship,
                     contact_phone,
-                    contact_email
+                    contact_email,
+                    is_primary
                 )
-                VALUES (%s, %s, %s, %s, %s)
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s
+                )
                 """,
                 (
                     user_id,
                     contact_name,
                     relationship,
                     contact_phone,
-                    contact_email
+                    contact_email,
+                    int(
+                        should_be_primary
+                    )
                 )
             )
 
-            db.commit()
+            ensure_primary_contact(
+                cursor,
+                user_id
+            )
+
+            database.commit()
 
             flash(
-                "Emergency Contact Added Successfully!",
+                (
+                    "Emergency Contact Added "
+                    "Successfully!"
+                ),
                 "success"
             )
 
@@ -156,6 +475,13 @@ def emergency_page():
                 )
             )
 
+        ensure_primary_contact(
+            cursor,
+            user_id
+        )
+
+        database.commit()
+
         cursor.execute(
             """
             SELECT
@@ -164,12 +490,17 @@ def emergency_page():
                 contact_name,
                 relationship,
                 contact_phone,
-                contact_email
+                contact_email,
+                is_primary
             FROM emergency_contacts
             WHERE user_id = %s
-            ORDER BY id DESC
+            ORDER BY
+                is_primary DESC,
+                id DESC
             """,
-            (user_id,)
+            (
+                user_id,
+            )
         )
 
         contacts = cursor.fetchall()
@@ -181,8 +512,8 @@ def emergency_page():
 
     except mysql.connector.Error as error:
 
-        if db is not None:
-            db.rollback()
+        if database is not None:
+            database.rollback()
 
         flash(
             f"Database error: {error}",
@@ -200,8 +531,11 @@ def emergency_page():
         if cursor is not None:
             cursor.close()
 
-        if db is not None and db.is_connected():
-            db.close()
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
 
 
 # =========================================================
@@ -210,64 +544,114 @@ def emergency_page():
 
 @emergency.route(
     "/edit_contact/<int:id>",
-    methods=["GET", "POST"]
+    methods=[
+        "GET",
+        "POST"
+    ]
 )
-def edit_contact(id):
+def edit_contact(
+    id
+):
 
     if "user_id" not in session:
 
         return redirect(
-            url_for("auth.login")
+            url_for(
+                "auth.login"
+            )
         )
 
-    db = None
+    database = None
     cursor = None
 
     try:
 
-        db = get_db()
+        database = get_db()
 
-        cursor = db.cursor(
+        cursor = database.cursor(
             dictionary=True
         )
 
         user_id = session["user_id"]
 
+        contact = select_contact(
+            cursor,
+            id,
+            user_id
+        )
+
+        if contact is None:
+
+            flash(
+                "Contact not found.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "emergency.emergency_page"
+                )
+            )
+
         if request.method == "POST":
 
             contact_name = (
                 request.form
-                .get("contact_name", "")
+                .get(
+                    "contact_name",
+                    ""
+                )
                 .strip()
             )
 
             relationship = (
                 request.form
-                .get("relationship", "")
+                .get(
+                    "relationship",
+                    ""
+                )
                 .strip()
             )
 
             contact_phone = (
                 request.form
-                .get("phone", "")
+                .get(
+                    "phone",
+                    ""
+                )
                 .strip()
             )
 
             contact_email = (
                 request.form
-                .get("contact_email", "")
+                .get(
+                    "contact_email",
+                    ""
+                )
                 .strip()
                 .lower()
             )
 
+            requested_primary = (
+                value_to_boolean(
+                    request.form.get(
+                        "is_primary"
+                    ),
+                    False
+                )
+            )
+
             if (
-                not contact_name or
-                not relationship or
-                not contact_phone
+                not contact_name
+                or not relationship
+                or not contact_phone
             ):
 
                 flash(
-                    "Name, relationship and phone are required.",
+                    (
+                        "Name, relationship and "
+                        "phone are required."
+                    ),
                     "danger"
                 )
 
@@ -278,6 +662,13 @@ def edit_contact(id):
                     )
                 )
 
+            if requested_primary:
+
+                clear_primary_contacts(
+                    cursor,
+                    user_id
+                )
+
             cursor.execute(
                 """
                 UPDATE emergency_contacts
@@ -285,68 +676,37 @@ def edit_contact(id):
                     contact_name = %s,
                     relationship = %s,
                     contact_phone = %s,
-                    contact_email = %s
+                    contact_email = %s,
+                    is_primary = %s
                 WHERE id = %s
-                AND user_id = %s
+                  AND user_id = %s
                 """,
                 (
                     contact_name,
                     relationship,
                     contact_phone,
                     contact_email,
+                    int(
+                        requested_primary
+                    ),
                     id,
                     user_id
                 )
             )
 
-            if cursor.rowcount == 0:
-
-                flash(
-                    "Contact not found.",
-                    "danger"
-                )
-
-            else:
-
-                db.commit()
-
-                flash(
-                    "Contact Updated Successfully!",
-                    "success"
-                )
-
-            return redirect(
-                url_for(
-                    "emergency.emergency_page"
-                )
-            )
-
-        cursor.execute(
-            """
-            SELECT
-                id,
-                user_id,
-                contact_name,
-                relationship,
-                contact_phone,
-                contact_email
-            FROM emergency_contacts
-            WHERE id = %s
-            AND user_id = %s
-            """,
-            (
-                id,
+            ensure_primary_contact(
+                cursor,
                 user_id
             )
-        )
 
-        contact = cursor.fetchone()
-
-        if contact is None:
+            database.commit()
 
             flash(
-                "Contact not found.",
-                "danger"
+                (
+                    "Contact Updated "
+                    "Successfully!"
+                ),
+                "success"
             )
 
             return redirect(
@@ -362,8 +722,8 @@ def edit_contact(id):
 
     except mysql.connector.Error as error:
 
-        if db is not None:
-            db.rollback()
+        if database is not None:
+            database.rollback()
 
         flash(
             f"Database error: {error}",
@@ -381,50 +741,58 @@ def edit_contact(id):
         if cursor is not None:
             cursor.close()
 
-        if db is not None and db.is_connected():
-            db.close()
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
 
 
 # =========================================================
-# WEB PAGE — DELETE CONTACT
+# WEB PAGE — SET PRIMARY CONTACT
 # =========================================================
 
 @emergency.route(
-    "/delete_contact/<int:id>",
-    methods=["GET", "POST"]
+    "/set_primary_contact/<int:id>",
+    methods=[
+        "GET",
+        "POST"
+    ]
 )
-def delete_contact(id):
+def set_primary_contact(
+    id
+):
 
     if "user_id" not in session:
 
         return redirect(
-            url_for("auth.login")
+            url_for(
+                "auth.login"
+            )
         )
 
-    db = None
+    database = None
     cursor = None
 
     try:
 
-        db = get_db()
+        database = get_db()
 
-        cursor = db.cursor()
+        cursor = database.cursor(
+            dictionary=True
+        )
 
         user_id = session["user_id"]
 
-        cursor.execute(
-            """
-            DELETE FROM emergency_contacts
-            WHERE id = %s
-            AND user_id = %s
-            """,
-            (
-                id,
-                user_id
+        primary_updated = (
+            make_contact_primary(
+                cursor,
+                user_id,
+                id
             )
         )
 
-        if cursor.rowcount == 0:
+        if not primary_updated:
 
             flash(
                 "Contact not found.",
@@ -433,10 +801,10 @@ def delete_contact(id):
 
         else:
 
-            db.commit()
+            database.commit()
 
             flash(
-                "Contact Deleted Successfully!",
+                "Primary contact updated.",
                 "success"
             )
 
@@ -448,8 +816,8 @@ def delete_contact(id):
 
     except mysql.connector.Error as error:
 
-        if db is not None:
-            db.rollback()
+        if database is not None:
+            database.rollback()
 
         flash(
             f"Database error: {error}",
@@ -467,8 +835,127 @@ def delete_contact(id):
         if cursor is not None:
             cursor.close()
 
-        if db is not None and db.is_connected():
-            db.close()
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
+
+
+# =========================================================
+# WEB PAGE — DELETE CONTACT
+# =========================================================
+
+@emergency.route(
+    "/delete_contact/<int:id>",
+    methods=[
+        "GET",
+        "POST"
+    ]
+)
+def delete_contact(
+    id
+):
+
+    if "user_id" not in session:
+
+        return redirect(
+            url_for(
+                "auth.login"
+            )
+        )
+
+    database = None
+    cursor = None
+
+    try:
+
+        database = get_db()
+
+        cursor = database.cursor(
+            dictionary=True
+        )
+
+        user_id = session["user_id"]
+
+        contact = select_contact(
+            cursor,
+            id,
+            user_id
+        )
+
+        if contact is None:
+
+            flash(
+                "Contact not found.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "emergency.emergency_page"
+                )
+            )
+
+        cursor.execute(
+            """
+            DELETE FROM emergency_contacts
+            WHERE id = %s
+              AND user_id = %s
+            """,
+            (
+                id,
+                user_id
+            )
+        )
+
+        ensure_primary_contact(
+            cursor,
+            user_id
+        )
+
+        database.commit()
+
+        flash(
+            (
+                "Contact Deleted "
+                "Successfully!"
+            ),
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "emergency.emergency_page"
+            )
+        )
+
+    except mysql.connector.Error as error:
+
+        if database is not None:
+            database.rollback()
+
+        flash(
+            f"Database error: {error}",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "emergency.emergency_page"
+            )
+        )
+
+    finally:
+
+        if cursor is not None:
+            cursor.close()
+
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
 
 
 # =========================================================
@@ -477,7 +964,9 @@ def delete_contact(id):
 
 @emergency.route(
     "/api/emergency-contacts",
-    methods=["GET"]
+    methods=[
+        "GET"
+    ]
 )
 def api_get_emergency_contacts():
 
@@ -489,16 +978,25 @@ def api_get_emergency_contacts():
             "contacts": []
         }), 401
 
-    db = None
+    database = None
     cursor = None
 
     try:
 
-        db = get_db()
+        database = get_db()
 
-        cursor = db.cursor(
+        cursor = database.cursor(
             dictionary=True
         )
+
+        user_id = session["user_id"]
+
+        ensure_primary_contact(
+            cursor,
+            user_id
+        )
+
+        database.commit()
 
         cursor.execute(
             """
@@ -508,13 +1006,16 @@ def api_get_emergency_contacts():
                 contact_name,
                 relationship,
                 contact_phone,
-                contact_email
+                contact_email,
+                is_primary
             FROM emergency_contacts
             WHERE user_id = %s
-            ORDER BY id DESC
+            ORDER BY
+                is_primary DESC,
+                id DESC
             """,
             (
-                session["user_id"],
+                user_id,
             )
         )
 
@@ -522,9 +1023,14 @@ def api_get_emergency_contacts():
 
         return jsonify({
             "success": True,
-            "message": "Emergency contacts loaded successfully.",
+            "message": (
+                "Emergency contacts "
+                "loaded successfully."
+            ),
             "contacts": [
-                contact_to_json(contact)
+                contact_to_json(
+                    contact
+                )
                 for contact in contacts
             ]
         }), 200
@@ -533,7 +1039,9 @@ def api_get_emergency_contacts():
 
         return jsonify({
             "success": False,
-            "message": f"Database error: {error}",
+            "message": (
+                f"Database error: {error}"
+            ),
             "contacts": []
         }), 500
 
@@ -542,8 +1050,103 @@ def api_get_emergency_contacts():
         if cursor is not None:
             cursor.close()
 
-        if db is not None and db.is_connected():
-            db.close()
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
+
+
+# =========================================================
+# API — GET PRIMARY EMERGENCY CONTACT
+# =========================================================
+
+@emergency.route(
+    "/api/emergency-contacts/primary",
+    methods=[
+        "GET"
+    ]
+)
+def api_get_primary_contact():
+
+    if "user_id" not in session:
+
+        return jsonify({
+            "success": False,
+            "message": "Please login first.",
+            "contact": None
+        }), 401
+
+    database = None
+    cursor = None
+
+    try:
+
+        database = get_db()
+
+        cursor = database.cursor(
+            dictionary=True
+        )
+
+        user_id = session["user_id"]
+
+        primary_contact_id = (
+            ensure_primary_contact(
+                cursor,
+                user_id
+            )
+        )
+
+        database.commit()
+
+        if primary_contact_id is None:
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "No emergency contact "
+                    "is available."
+                ),
+                "contact": None
+            }), 404
+
+        contact = select_contact(
+            cursor,
+            primary_contact_id,
+            user_id
+        )
+
+        return jsonify({
+            "success": True,
+            "message": (
+                "Primary emergency contact "
+                "loaded successfully."
+            ),
+            "contact": contact_to_json(
+                contact
+            )
+        }), 200
+
+    except mysql.connector.Error as error:
+
+        return jsonify({
+            "success": False,
+            "message": (
+                f"Database error: {error}"
+            ),
+            "contact": None
+        }), 500
+
+    finally:
+
+        if cursor is not None:
+            cursor.close()
+
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
 
 
 # =========================================================
@@ -552,7 +1155,9 @@ def api_get_emergency_contacts():
 
 @emergency.route(
     "/api/emergency-contacts",
-    methods=["POST"]
+    methods=[
+        "POST"
+    ]
 )
 def api_add_emergency_contact():
 
@@ -563,84 +1168,108 @@ def api_add_emergency_contact():
             "message": "Please login first."
         }), 401
 
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    contact_name = (
-        str(
-            data.get(
-                "contact_name",
-                ""
-            )
+    data = (
+        request.get_json(
+            silent=True
         )
-        .strip()
+        or {}
     )
 
-    relationship = (
-        str(
-            data.get(
-                "relationship",
-                ""
-            )
+    contact_name = str(
+        data.get(
+            "contact_name",
+            ""
         )
-        .strip()
-    )
+    ).strip()
 
-    contact_phone = (
-        str(
-            data.get(
-                "contact_phone",
-                ""
-            )
+    relationship = str(
+        data.get(
+            "relationship",
+            ""
         )
-        .strip()
-    )
+    ).strip()
 
-    contact_email = (
-        str(
-            data.get(
-                "contact_email",
-                ""
-            )
+    contact_phone = str(
+        data.get(
+            "contact_phone",
+            ""
         )
-        .strip()
-        .lower()
+    ).strip()
+
+    contact_email = str(
+        data.get(
+            "contact_email",
+            ""
+        )
+    ).strip().lower()
+
+    requested_primary = (
+        value_to_boolean(
+            data.get(
+                "is_primary"
+            ),
+            False
+        )
     )
 
     if not contact_name:
 
         return jsonify({
             "success": False,
-            "message": "Contact name is required."
+            "message": (
+                "Contact name is required."
+            )
         }), 400
 
     if not relationship:
 
         return jsonify({
             "success": False,
-            "message": "Relationship is required."
+            "message": (
+                "Relationship is required."
+            )
         }), 400
 
     if not contact_phone:
 
         return jsonify({
             "success": False,
-            "message": "Contact phone is required."
+            "message": (
+                "Contact phone is required."
+            )
         }), 400
 
-    db = None
+    database = None
     cursor = None
 
     try:
 
-        db = get_db()
+        database = get_db()
 
-        cursor = db.cursor(
+        cursor = database.cursor(
             dictionary=True
         )
 
         user_id = session["user_id"]
+
+        is_first_contact = (
+            not user_has_contacts(
+                cursor,
+                user_id
+            )
+        )
+
+        should_be_primary = (
+            requested_primary
+            or is_first_contact
+        )
+
+        if should_be_primary:
+
+            clear_primary_contacts(
+                cursor,
+                user_id
+            )
 
         cursor.execute(
             """
@@ -650,58 +1279,67 @@ def api_add_emergency_contact():
                 contact_name,
                 relationship,
                 contact_phone,
-                contact_email
+                contact_email,
+                is_primary
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
             """,
             (
                 user_id,
                 contact_name,
                 relationship,
                 contact_phone,
-                contact_email
+                contact_email,
+                int(
+                    should_be_primary
+                )
             )
         )
 
         contact_id = cursor.lastrowid
 
-        db.commit()
-
-        cursor.execute(
-            """
-            SELECT
-                id,
-                user_id,
-                contact_name,
-                relationship,
-                contact_phone,
-                contact_email
-            FROM emergency_contacts
-            WHERE id = %s
-            AND user_id = %s
-            """,
-            (
-                contact_id,
-                user_id
-            )
+        ensure_primary_contact(
+            cursor,
+            user_id
         )
 
-        contact = cursor.fetchone()
+        database.commit()
+
+        contact = select_contact(
+            cursor,
+            contact_id,
+            user_id
+        )
 
         return jsonify({
             "success": True,
-            "message": "Emergency contact added successfully.",
-            "contact": contact_to_json(contact)
+            "message": (
+                "Emergency contact "
+                "added successfully."
+            ),
+            "contact": contact_to_json(
+                contact
+            )
         }), 201
 
     except mysql.connector.Error as error:
 
-        if db is not None:
-            db.rollback()
+        if database is not None:
+            database.rollback()
 
         return jsonify({
             "success": False,
-            "message": f"Database error: {error}"
+            "message": (
+                f"Database error: {error}"
+            )
         }), 500
 
     finally:
@@ -709,8 +1347,11 @@ def api_add_emergency_contact():
         if cursor is not None:
             cursor.close()
 
-        if db is not None and db.is_connected():
-            db.close()
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
 
 
 # =========================================================
@@ -719,9 +1360,13 @@ def api_add_emergency_contact():
 
 @emergency.route(
     "/api/emergency-contacts/<int:contact_id>",
-    methods=["PUT"]
+    methods=[
+        "PUT"
+    ]
 )
-def api_update_emergency_contact(contact_id):
+def api_update_emergency_contact(
+    contact_id
+):
 
     if "user_id" not in session:
 
@@ -730,84 +1375,131 @@ def api_update_emergency_contact(contact_id):
             "message": "Please login first."
         }), 401
 
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    contact_name = (
-        str(
-            data.get(
-                "contact_name",
-                ""
-            )
+    data = (
+        request.get_json(
+            silent=True
         )
-        .strip()
+        or {}
     )
 
-    relationship = (
-        str(
-            data.get(
-                "relationship",
-                ""
-            )
+    contact_name = str(
+        data.get(
+            "contact_name",
+            ""
         )
-        .strip()
+    ).strip()
+
+    relationship = str(
+        data.get(
+            "relationship",
+            ""
+        )
+    ).strip()
+
+    contact_phone = str(
+        data.get(
+            "contact_phone",
+            ""
+        )
+    ).strip()
+
+    contact_email = str(
+        data.get(
+            "contact_email",
+            ""
+        )
+    ).strip().lower()
+
+    primary_value_provided = (
+        "is_primary" in data
     )
 
-    contact_phone = (
-        str(
+    requested_primary = (
+        value_to_boolean(
             data.get(
-                "contact_phone",
-                ""
-            )
+                "is_primary"
+            ),
+            False
         )
-        .strip()
-    )
-
-    contact_email = (
-        str(
-            data.get(
-                "contact_email",
-                ""
-            )
-        )
-        .strip()
-        .lower()
     )
 
     if not contact_name:
 
         return jsonify({
             "success": False,
-            "message": "Contact name is required."
+            "message": (
+                "Contact name is required."
+            )
         }), 400
 
     if not relationship:
 
         return jsonify({
             "success": False,
-            "message": "Relationship is required."
+            "message": (
+                "Relationship is required."
+            )
         }), 400
 
     if not contact_phone:
 
         return jsonify({
             "success": False,
-            "message": "Contact phone is required."
+            "message": (
+                "Contact phone is required."
+            )
         }), 400
 
-    db = None
+    database = None
     cursor = None
 
     try:
 
-        db = get_db()
+        database = get_db()
 
-        cursor = db.cursor(
+        cursor = database.cursor(
             dictionary=True
         )
 
         user_id = session["user_id"]
+
+        existing_contact = select_contact(
+            cursor,
+            contact_id,
+            user_id
+        )
+
+        if existing_contact is None:
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "Emergency contact "
+                    "not found."
+                )
+            }), 404
+
+        if primary_value_provided:
+
+            next_primary_value = (
+                requested_primary
+            )
+
+        else:
+
+            next_primary_value = bool(
+                existing_contact.get(
+                    "is_primary",
+                    0
+                )
+            )
+
+        if next_primary_value:
+
+            clear_primary_contacts(
+                cursor,
+                user_id
+            )
 
         cursor.execute(
             """
@@ -816,81 +1508,58 @@ def api_update_emergency_contact(contact_id):
                 contact_name = %s,
                 relationship = %s,
                 contact_phone = %s,
-                contact_email = %s
+                contact_email = %s,
+                is_primary = %s
             WHERE id = %s
-            AND user_id = %s
+              AND user_id = %s
             """,
             (
                 contact_name,
                 relationship,
                 contact_phone,
                 contact_email,
+                int(
+                    next_primary_value
+                ),
                 contact_id,
                 user_id
             )
         )
 
-        if cursor.rowcount == 0:
-
-            cursor.execute(
-                """
-                SELECT id
-                FROM emergency_contacts
-                WHERE id = %s
-                AND user_id = %s
-                """,
-                (
-                    contact_id,
-                    user_id
-                )
-            )
-
-            existing_contact = cursor.fetchone()
-
-            if existing_contact is None:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Emergency contact not found."
-                }), 404
-
-        db.commit()
-
-        cursor.execute(
-            """
-            SELECT
-                id,
-                user_id,
-                contact_name,
-                relationship,
-                contact_phone,
-                contact_email
-            FROM emergency_contacts
-            WHERE id = %s
-            AND user_id = %s
-            """,
-            (
-                contact_id,
-                user_id
-            )
+        ensure_primary_contact(
+            cursor,
+            user_id
         )
 
-        contact = cursor.fetchone()
+        database.commit()
+
+        contact = select_contact(
+            cursor,
+            contact_id,
+            user_id
+        )
 
         return jsonify({
             "success": True,
-            "message": "Emergency contact updated successfully.",
-            "contact": contact_to_json(contact)
+            "message": (
+                "Emergency contact "
+                "updated successfully."
+            ),
+            "contact": contact_to_json(
+                contact
+            )
         }), 200
 
     except mysql.connector.Error as error:
 
-        if db is not None:
-            db.rollback()
+        if database is not None:
+            database.rollback()
 
         return jsonify({
             "success": False,
-            "message": f"Database error: {error}"
+            "message": (
+                f"Database error: {error}"
+            )
         }), 500
 
     finally:
@@ -898,19 +1567,27 @@ def api_update_emergency_contact(contact_id):
         if cursor is not None:
             cursor.close()
 
-        if db is not None and db.is_connected():
-            db.close()
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
 
 
 # =========================================================
-# API — DELETE EMERGENCY CONTACT
+# API — SET PRIMARY EMERGENCY CONTACT
 # =========================================================
 
 @emergency.route(
-    "/api/emergency-contacts/<int:contact_id>",
-    methods=["DELETE"]
+    "/api/emergency-contacts/<int:contact_id>/primary",
+    methods=[
+        "PUT",
+        "PATCH"
+    ]
 )
-def api_delete_emergency_contact(contact_id):
+def api_set_primary_contact(
+    contact_id
+):
 
     if "user_id" not in session:
 
@@ -919,49 +1596,66 @@ def api_delete_emergency_contact(contact_id):
             "message": "Please login first."
         }), 401
 
-    db = None
+    database = None
     cursor = None
 
     try:
 
-        db = get_db()
+        database = get_db()
 
-        cursor = db.cursor()
+        cursor = database.cursor(
+            dictionary=True
+        )
 
-        cursor.execute(
-            """
-            DELETE FROM emergency_contacts
-            WHERE id = %s
-            AND user_id = %s
-            """,
-            (
-                contact_id,
-                session["user_id"]
+        user_id = session["user_id"]
+
+        primary_updated = (
+            make_contact_primary(
+                cursor,
+                user_id,
+                contact_id
             )
         )
 
-        if cursor.rowcount == 0:
+        if not primary_updated:
 
             return jsonify({
                 "success": False,
-                "message": "Emergency contact not found."
+                "message": (
+                    "Emergency contact "
+                    "not found."
+                )
             }), 404
 
-        db.commit()
+        database.commit()
+
+        contact = select_contact(
+            cursor,
+            contact_id,
+            user_id
+        )
 
         return jsonify({
             "success": True,
-            "message": "Emergency contact deleted successfully."
+            "message": (
+                "Primary emergency contact "
+                "updated successfully."
+            ),
+            "contact": contact_to_json(
+                contact
+            )
         }), 200
 
     except mysql.connector.Error as error:
 
-        if db is not None:
-            db.rollback()
+        if database is not None:
+            database.rollback()
 
         return jsonify({
             "success": False,
-            "message": f"Database error: {error}"
+            "message": (
+                f"Database error: {error}"
+            )
         }), 500
 
     finally:
@@ -969,5 +1663,109 @@ def api_delete_emergency_contact(contact_id):
         if cursor is not None:
             cursor.close()
 
-        if db is not None and db.is_connected():
-            db.close()
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
+
+
+# =========================================================
+# API — DELETE EMERGENCY CONTACT
+# =========================================================
+
+@emergency.route(
+    "/api/emergency-contacts/<int:contact_id>",
+    methods=[
+        "DELETE"
+    ]
+)
+def api_delete_emergency_contact(
+    contact_id
+):
+
+    if "user_id" not in session:
+
+        return jsonify({
+            "success": False,
+            "message": "Please login first."
+        }), 401
+
+    database = None
+    cursor = None
+
+    try:
+
+        database = get_db()
+
+        cursor = database.cursor(
+            dictionary=True
+        )
+
+        user_id = session["user_id"]
+
+        contact = select_contact(
+            cursor,
+            contact_id,
+            user_id
+        )
+
+        if contact is None:
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "Emergency contact "
+                    "not found."
+                )
+            }), 404
+
+        cursor.execute(
+            """
+            DELETE FROM emergency_contacts
+            WHERE id = %s
+              AND user_id = %s
+            """,
+            (
+                contact_id,
+                user_id
+            )
+        )
+
+        ensure_primary_contact(
+            cursor,
+            user_id
+        )
+
+        database.commit()
+
+        return jsonify({
+            "success": True,
+            "message": (
+                "Emergency contact "
+                "deleted successfully."
+            )
+        }), 200
+
+    except mysql.connector.Error as error:
+
+        if database is not None:
+            database.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": (
+                f"Database error: {error}"
+            )
+        }), 500
+
+    finally:
+
+        if cursor is not None:
+            cursor.close()
+
+        if (
+            database is not None
+            and database.is_connected()
+        ):
+            database.close()
