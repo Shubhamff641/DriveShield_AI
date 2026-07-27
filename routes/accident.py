@@ -13,6 +13,7 @@ from database.db import get_db_connection
 from models.accident import Accident
 from routes.hospital import find_nearest_hospital
 from utils.email_sender import send_accident_email
+from utils.firebase_sender import send_accident_push_notifications
 
 
 accident = Blueprint(
@@ -480,6 +481,14 @@ def api_accident_detected():
     emails_sent = 0
     accident_saved = False
 
+    push_result = {
+        "configured": False,
+        "matched_contacts": 0,
+        "tokens_found": 0,
+        "notifications_sent": 0,
+        "notifications_failed": 0
+    }
+
     try:
         connection = get_db_connection()
 
@@ -580,9 +589,30 @@ def api_accident_detected():
                     bool(sent)
             })
 
+        push_result = (
+            send_accident_push_notifications(
+                connection=connection,
+                contacts=contacts,
+                driver_user_id=user_id,
+                driver_name=driver_name,
+                latitude=latitude,
+                longitude=longitude,
+                severity=severity,
+                hospital_name=hospital_name
+            )
+        )
+
+        alert_delivered = (
+            emails_sent > 0
+            or push_result.get(
+                "notifications_sent",
+                0
+            ) > 0
+        )
+
         alert_status = (
             "ALERT_SENT"
-            if emails_sent > 0
+            if alert_delivered
             else "DETECTED"
         )
 
@@ -592,7 +622,7 @@ def api_accident_detected():
             longitude,
             severity,
             hospital_id,
-            emails_sent > 0,
+            alert_delivered,
             alert_status,
             description
         )
@@ -656,7 +686,36 @@ def api_accident_detected():
                 f"?api=1&query="
                 f"{latitude},{longitude}"
             ),
-            "email_results": email_results
+            "email_results": email_results,
+            "push_configured":
+                push_result.get(
+                    "configured",
+                    False
+                ),
+            "push_matched_contacts":
+                push_result.get(
+                    "matched_contacts",
+                    0
+                ),
+            "push_tokens_found":
+                push_result.get(
+                    "tokens_found",
+                    0
+                ),
+            "push_notifications_sent":
+                push_result.get(
+                    "notifications_sent",
+                    0
+                ),
+            "push_notifications_failed":
+                push_result.get(
+                    "notifications_failed",
+                    0
+                ),
+            "push_error":
+                push_result.get(
+                    "error"
+                )
         }), 200
 
     except Exception as error:
@@ -678,7 +737,9 @@ def api_accident_detected():
             "emails_sent": emails_sent,
             "hospital_name": hospital_name,
             "nearest_hospital":
-                nearest_hospital
+                nearest_hospital,
+            "push_result":
+                push_result
         }), 500
 
     finally:

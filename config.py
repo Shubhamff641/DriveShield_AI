@@ -21,10 +21,6 @@ def env_boolean(
     variable_name,
     default=False
 ):
-    """
-    Convert environment values such as true, yes, 1 and on
-    into a Python Boolean value.
-    """
 
     value = os.getenv(
         variable_name,
@@ -40,10 +36,6 @@ def env_boolean(
 
 
 class Config:
-
-    # =====================================================
-    # FLASK
-    # =====================================================
 
     SECRET_KEY = os.getenv(
         "SECRET_KEY",
@@ -73,10 +65,6 @@ class Config:
         False
     )
 
-    # =====================================================
-    # MYSQL
-    # =====================================================
-
     MYSQL_HOST = os.getenv(
         "MYSQL_HOST",
         "localhost"
@@ -104,10 +92,6 @@ class Config:
         "driveshield_ai"
     )
 
-    # =====================================================
-    # FILE UPLOAD
-    # =====================================================
-
     UPLOAD_FOLDER = os.path.join(
         BASE_DIR,
         "static",
@@ -126,14 +110,6 @@ class Config:
         "jpg",
         "jpeg"
     }
-
-    # =====================================================
-    # EMAIL / FLASK-MAIL
-    # =====================================================
-    #
-    # These settings are kept because app.py still
-    # initializes the Flask-Mail extension.
-    # Accident alerts now use Brevo HTTPS API instead.
 
     MAIL_SERVER = os.getenv(
         "MAIL_SERVER",
@@ -172,10 +148,6 @@ class Config:
         MAIL_USERNAME
     )
 
-    # =====================================================
-    # EMAIL / BREVO HTTPS API
-    # =====================================================
-
     BREVO_API_KEY = os.getenv(
         "BREVO_API_KEY",
         ""
@@ -193,5 +165,15 @@ class Config:
 
     BREVO_REPLY_TO = os.getenv(
         "BREVO_REPLY_TO",
+        ""
+    ).strip()
+
+    FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_JSON",
+        ""
+    ).strip()
+
+    FIREBASE_SERVICE_ACCOUNT_BASE64 = os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_BASE64",
         ""
     ).strip()

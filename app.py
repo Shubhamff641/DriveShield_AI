@@ -9,10 +9,10 @@ from routes.auth import auth
 from routes.camera import camera
 from routes.dashboard import dashboard
 from routes.emergency import emergency
+from routes.fcm import fcm
 from routes.gps import gps
 from routes.hospital import hospital
 from routes.profile import profile
-from routes.settings import settings
 from routes.test_email import test_email
 
 
@@ -33,16 +33,14 @@ app.register_blueprint(profile)
 app.register_blueprint(emergency)
 app.register_blueprint(camera)
 app.register_blueprint(accident)
+app.register_blueprint(fcm)
 app.register_blueprint(gps)
 app.register_blueprint(hospital)
-app.register_blueprint(settings)
 app.register_blueprint(test_email)
 
 
 @app.after_request
-def keep_authenticated_session_permanent(
-    response
-):
+def keep_authenticated_session_permanent(response):
 
     if "user_id" in session:
         session.permanent = True
@@ -51,9 +49,7 @@ def keep_authenticated_session_permanent(
 
 
 @app.errorhandler(413)
-def image_too_large(
-    error
-):
+def image_too_large(error):
 
     return jsonify({
         "success": False,
@@ -65,9 +61,7 @@ def image_too_large(
 
 
 @app.errorhandler(404)
-def page_not_found(
-    error
-):
+def page_not_found(error):
 
     return jsonify({
         "success": False,
@@ -76,9 +70,7 @@ def page_not_found(
 
 
 @app.errorhandler(500)
-def internal_server_error(
-    error
-):
+def internal_server_error(error):
 
     return jsonify({
         "success": False,
