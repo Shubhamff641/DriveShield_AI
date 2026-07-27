@@ -392,7 +392,7 @@ def api_accident_detected():
                     latitude=latitude,
                     longitude=longitude,
                     radius=15000,
-                    request_timeout=20
+                    request_timeout=5
                 )
             )
 
