@@ -1,5 +1,9 @@
+import threading
+import uuid
+
 from flask import (
     Blueprint,
+    current_app,
     flash,
     jsonify,
     redirect,
@@ -22,10 +26,6 @@ accident = Blueprint(
 )
 
 
-# =========================================================
-# VIEW ACCIDENT HISTORY
-# =========================================================
-
 @accident.route("/accidents")
 def accident_history():
 
@@ -44,10 +44,6 @@ def accident_history():
         accidents=accidents
     )
 
-
-# =========================================================
-# ADD ACCIDENT FROM WEB FORM
-# =========================================================
 
 @accident.route(
     "/add_accident",
@@ -104,6 +100,7 @@ def add_accident():
         )
 
     try:
+
         latitude = float(latitude)
         longitude = float(longitude)
 
@@ -143,14 +140,12 @@ def add_accident():
     )
 
 
-# =========================================================
-# VIEW SINGLE ACCIDENT
-# =========================================================
-
 @accident.route(
     "/accident/<int:accident_id>"
 )
-def accident_details(accident_id):
+def accident_details(
+    accident_id
+):
 
     if "user_id" not in session:
 
@@ -181,15 +176,16 @@ def accident_details(accident_id):
     )
 
 
-# =========================================================
-# DELETE ACCIDENT
-# =========================================================
-
 @accident.route(
     "/delete_accident/<int:accident_id>",
-    methods=["GET", "POST"]
+    methods=[
+        "GET",
+        "POST"
+    ]
 )
-def delete_accident(accident_id):
+def delete_accident(
+    accident_id
+):
 
     if "user_id" not in session:
 
@@ -213,13 +209,332 @@ def delete_accident(accident_id):
     )
 
 
-# =========================================================
-# ANDROID API — AUTOMATIC ACCIDENT WORKFLOW
-# =========================================================
+def _find_hospital_name(
+    latitude,
+    longitude,
+    client_hospital_name
+):
+
+    default_hospital_values = {
+        "",
+        "nearest hospital not available",
+        "not available",
+        "unknown"
+    }
+
+    if (
+        client_hospital_name.lower()
+        not in default_hospital_values
+    ):
+
+        return (
+            client_hospital_name,
+            None
+        )
+
+    try:
+
+        nearest_hospital = (
+            find_nearest_hospital(
+                latitude=latitude,
+                longitude=longitude,
+                radius=15000,
+                request_timeout=5
+            )
+        )
+
+        if nearest_hospital is None:
+
+            return (
+                "No hospital found within 15 km",
+                None
+            )
+
+        hospital_name = str(
+            nearest_hospital.get(
+                "name"
+            )
+            or "Nearest hospital"
+        ).strip()
+
+        distance = nearest_hospital.get(
+            "distance"
+        )
+
+        address = str(
+            nearest_hospital.get(
+                "address"
+            )
+            or ""
+        ).strip()
+
+        display_parts = [
+            hospital_name
+        ]
+
+        if distance is not None:
+
+            try:
+
+                display_parts.append(
+                    f"{float(distance):.2f} km away"
+                )
+
+            except (TypeError, ValueError):
+
+                pass
+
+        if address:
+
+            display_parts.append(
+                address
+            )
+
+        return (
+            " - ".join(
+                display_parts
+            ),
+            nearest_hospital
+        )
+
+    except Exception as error:
+
+        print(
+            "Nearest hospital lookup error:",
+            error,
+            flush=True
+        )
+
+        return (
+            "Nearest hospital lookup unavailable",
+            None
+        )
+
+
+def _process_accident_workflow(
+    flask_app,
+    job_id,
+    user_id,
+    driver_name,
+    latitude,
+    longitude,
+    severity,
+    hospital_id,
+    client_hospital_name,
+    description,
+    impact_force
+):
+
+    with flask_app.app_context():
+
+        connection = None
+        cursor = None
+
+        try:
+
+            hospital_name, nearest_hospital = (
+                _find_hospital_name(
+                    latitude=latitude,
+                    longitude=longitude,
+                    client_hospital_name=
+                        client_hospital_name
+                )
+            )
+
+            connection = get_db_connection()
+
+            cursor = connection.cursor(
+                dictionary=True
+            )
+
+            cursor.execute(
+                """
+                SELECT
+                    id,
+                    contact_name,
+                    relationship,
+                    contact_phone,
+                    contact_email
+                FROM emergency_contacts
+                WHERE user_id = %s
+                ORDER BY
+                    is_primary DESC,
+                    id ASC
+                """,
+                (
+                    user_id,
+                )
+            )
+
+            contacts = cursor.fetchall()
+
+            emails_sent = 0
+
+            for contact in contacts:
+
+                contact_email = str(
+                    contact.get(
+                        "contact_email"
+                    )
+                    or ""
+                ).strip()
+
+                if not contact_email:
+                    continue
+
+                try:
+
+                    sent = send_accident_email(
+                        receiver_email=
+                            contact_email,
+
+                        driver_name=
+                            driver_name,
+
+                        latitude=
+                            latitude,
+
+                        longitude=
+                            longitude,
+
+                        hospital_name=
+                            hospital_name,
+
+                        severity=
+                            severity,
+
+                        impact_force=
+                            impact_force,
+
+                        description=
+                            description,
+
+                        contact_name=
+                            contact.get(
+                                "contact_name",
+                                "Emergency Contact"
+                            )
+                    )
+
+                    if sent:
+                        emails_sent += 1
+
+                except Exception as error:
+
+                    print(
+                        "Emergency email error:",
+                        error,
+                        flush=True
+                    )
+
+            push_result = (
+                send_accident_push_notifications(
+                    connection=connection,
+                    contacts=contacts,
+                    driver_user_id=user_id,
+                    driver_name=driver_name,
+                    latitude=latitude,
+                    longitude=longitude,
+                    severity=severity,
+                    hospital_name=hospital_name
+                )
+            )
+
+            notifications_sent = int(
+                push_result.get(
+                    "notifications_sent",
+                    0
+                )
+                or 0
+            )
+
+            alert_delivered = (
+                emails_sent > 0
+                or notifications_sent > 0
+            )
+
+            Accident.create_accident(
+                user_id,
+                latitude,
+                longitude,
+                severity,
+                hospital_id,
+                alert_delivered,
+                (
+                    "ALERT_SENT"
+                    if alert_delivered
+                    else "DETECTED"
+                ),
+                description
+            )
+
+            print(
+                (
+                    f"Accident job {job_id} completed: "
+                    f"emails={emails_sent}, "
+                    f"push={notifications_sent}, "
+                    f"hospital={hospital_name}, "
+                    f"nearest={nearest_hospital is not None}"
+                ),
+                flush=True
+            )
+
+        except Exception as error:
+
+            print(
+                (
+                    f"Accident job {job_id} failed: "
+                    f"{error}"
+                ),
+                flush=True
+            )
+
+            try:
+
+                Accident.create_accident(
+                    user_id,
+                    latitude,
+                    longitude,
+                    severity,
+                    hospital_id,
+                    False,
+                    "DETECTED",
+                    (
+                        f"{description} "
+                        "Emergency processing error: "
+                        f"{str(error)[:300]}"
+                    )
+                )
+
+            except Exception as save_error:
+
+                print(
+                    (
+                        f"Accident job {job_id} "
+                        f"fallback save failed: "
+                        f"{save_error}"
+                    ),
+                    flush=True
+                )
+
+        finally:
+
+            if cursor is not None:
+                cursor.close()
+
+            if (
+                connection is not None
+                and connection.is_connected()
+            ):
+
+                connection.close()
+
 
 @accident.route(
     "/api/accident-detected",
-    methods=["POST"]
+    methods=[
+        "POST"
+    ]
 )
 def api_accident_detected():
 
@@ -230,9 +545,12 @@ def api_accident_detected():
             "message": "Login required."
         }), 401
 
-    data = request.get_json(
-        silent=True
-    ) or {}
+    data = (
+        request.get_json(
+            silent=True
+        )
+        or {}
+    )
 
     latitude = data.get(
         "latitude"
@@ -242,40 +560,30 @@ def api_accident_detected():
         "longitude"
     )
 
-    severity = (
-        str(
-            data.get(
-                "severity",
-                "HIGH"
-            )
+    severity = str(
+        data.get(
+            "severity",
+            "HIGH"
         )
-        .strip()
-        .upper()
-    )
+    ).strip().upper()
 
-    client_hospital_name = (
-        str(
-            data.get(
-                "hospital_name",
-                ""
-            )
+    client_hospital_name = str(
+        data.get(
+            "hospital_name",
+            ""
         )
-        .strip()
-    )
+    ).strip()
 
     hospital_id = data.get(
         "hospital_id"
     )
 
-    description = (
-        str(
-            data.get(
-                "description",
-                "Accident detected automatically."
-            )
+    description = str(
+        data.get(
+            "description",
+            "Accident detected automatically."
         )
-        .strip()
-    )
+    ).strip()
 
     impact_force = data.get(
         "impact_force"
@@ -295,8 +603,14 @@ def api_accident_detected():
         }), 400
 
     try:
-        latitude = float(latitude)
-        longitude = float(longitude)
+
+        latitude = float(
+            latitude
+        )
+
+        longitude = float(
+            longitude
+        )
 
     except (TypeError, ValueError):
 
@@ -332,6 +646,7 @@ def api_accident_detected():
     if impact_force is not None:
 
         try:
+
             impact_force = float(
                 impact_force
             )
@@ -358,397 +673,74 @@ def api_accident_detected():
         "DriveShield AI User"
     )
 
-    # -----------------------------------------------------
-    # AUTOMATICALLY FIND THE NEAREST HOSPITAL
-    # -----------------------------------------------------
+    job_id = uuid.uuid4().hex
 
-    nearest_hospital = None
-    hospital_lookup_message = ""
+    flask_app = (
+        current_app
+        ._get_current_object()
+    )
 
-    default_hospital_values = {
-        "",
-        "nearest hospital not available",
-        "not available",
-        "unknown"
-    }
+    worker = threading.Thread(
+        target=
+            _process_accident_workflow,
 
-    if (
-        client_hospital_name.lower()
-        not in default_hospital_values
-    ):
+        kwargs={
+            "flask_app":
+                flask_app,
 
-        hospital_name = (
-            client_hospital_name
+            "job_id":
+                job_id,
+
+            "user_id":
+                user_id,
+
+            "driver_name":
+                driver_name,
+
+            "latitude":
+                latitude,
+
+            "longitude":
+                longitude,
+
+            "severity":
+                severity,
+
+            "hospital_id":
+                hospital_id,
+
+            "client_hospital_name":
+                client_hospital_name,
+
+            "description":
+                description,
+
+            "impact_force":
+                impact_force
+        },
+
+        daemon=True,
+
+        name=(
+            f"accident-alert-"
+            f"{job_id[:8]}"
         )
-
-        hospital_lookup_message = (
-            "Hospital supplied by the client."
-        )
-
-    else:
-
-        try:
-            nearest_hospital = (
-                find_nearest_hospital(
-                    latitude=latitude,
-                    longitude=longitude,
-                    radius=15000,
-                    request_timeout=5
-                )
-            )
-
-            if nearest_hospital is None:
-
-                hospital_name = (
-                    "No hospital found within 15 km"
-                )
-
-                hospital_lookup_message = (
-                    "No hospital was found inside "
-                    "the 15 km search radius."
-                )
-
-            else:
-
-                hospital_name = (
-                    nearest_hospital["name"]
-                )
-
-                distance = (
-                    nearest_hospital.get(
-                        "distance"
-                    )
-                )
-
-                address = (
-                    nearest_hospital.get(
-                        "address"
-                    )
-                    or "Address not available"
-                )
-
-                display_parts = [
-                    hospital_name
-                ]
-
-                if distance is not None:
-
-                    display_parts.append(
-                        f"{distance:.2f} km away"
-                    )
-
-                if (
-                    address
-                    != "Address not available"
-                ):
-
-                    display_parts.append(
-                        address
-                    )
-
-                hospital_name = " - ".join(
-                    display_parts
-                )
-
-                hospital_lookup_message = (
-                    "Nearest hospital found "
-                    "automatically."
-                )
-
-        except Exception as hospital_error:
-
-            print(
-                "Nearest hospital lookup error:",
-                hospital_error
-            )
-
-            hospital_name = (
-                "Nearest hospital lookup unavailable"
-            )
-
-            hospital_lookup_message = (
-                "Hospital lookup service was "
-                "temporarily unavailable."
-            )
-
-    connection = None
-    cursor = None
-
-    contacts = []
-    email_results = []
-
-    emails_attempted = 0
-    emails_sent = 0
-    accident_saved = False
-
-    push_result = {
-        "configured": False,
-        "matched_contacts": 0,
-        "tokens_found": 0,
-        "notifications_sent": 0,
-        "notifications_failed": 0
-    }
-
-    try:
-        connection = get_db_connection()
-
-        cursor = connection.cursor(
-            dictionary=True
-        )
-
-        cursor.execute(
-            """
-            SELECT
-                id,
-                contact_name,
-                relationship,
-                contact_phone,
-                contact_email
-            FROM emergency_contacts
-            WHERE user_id = %s
-            ORDER BY id ASC
-            """,
-            (user_id,)
-        )
-
-        contacts = cursor.fetchall()
-
-        for contact in contacts:
-
-            contact_email = (
-                contact.get(
-                    "contact_email"
-                ) or ""
-            ).strip()
-
-            if not contact_email:
-                continue
-
-            emails_attempted += 1
-
-            try:
-                sent = send_accident_email(
-                    receiver_email=
-                        contact_email,
-
-                    driver_name=
-                        driver_name,
-
-                    latitude=
-                        latitude,
-
-                    longitude=
-                        longitude,
-
-                    hospital_name=
-                        hospital_name,
-
-                    severity=
-                        severity,
-
-                    impact_force=
-                        impact_force,
-
-                    description=
-                        description,
-
-                    contact_name=
-                        contact.get(
-                            "contact_name",
-                            "Emergency Contact"
-                        )
-                )
-
-            except Exception as email_error:
-
-                print(
-                    "Emergency email error for "
-                    f"{contact_email}:",
-                    email_error
-                )
-
-                sent = False
-
-            if sent:
-                emails_sent += 1
-
-            email_results.append({
-                "contact_id":
-                    contact.get("id"),
-
-                "contact_name":
-                    contact.get(
-                        "contact_name"
-                    )
-                    or "Emergency Contact",
-
-                "contact_email":
-                    contact_email,
-
-                "sent":
-                    bool(sent)
-            })
-
-        push_result = (
-            send_accident_push_notifications(
-                connection=connection,
-                contacts=contacts,
-                driver_user_id=user_id,
-                driver_name=driver_name,
-                latitude=latitude,
-                longitude=longitude,
-                severity=severity,
-                hospital_name=hospital_name
-            )
-        )
-
-        alert_delivered = (
-            emails_sent > 0
-            or push_result.get(
-                "notifications_sent",
-                0
-            ) > 0
-        )
-
-        alert_status = (
-            "ALERT_SENT"
-            if alert_delivered
-            else "DETECTED"
-        )
-
-        Accident.create_accident(
-            user_id,
-            latitude,
-            longitude,
-            severity,
-            hospital_id,
-            alert_delivered,
-            alert_status,
-            description
-        )
-
-        accident_saved = True
-
-        if emails_attempted == 0:
-
-            response_message = (
-                "Accident saved, but no emergency "
-                "contact has an email address."
-            )
-
-        elif emails_sent == emails_attempted:
-
-            response_message = (
-                f"Accident saved and emergency alert "
-                f"sent to {emails_sent} contact"
-                f"{'' if emails_sent == 1 else 's'}."
-            )
-
-        elif emails_sent > 0:
-
-            failed_count = (
-                emails_attempted -
-                emails_sent
-            )
-
-            response_message = (
-                f"Accident saved. Alert sent to "
-                f"{emails_sent} contact"
-                f"{'' if emails_sent == 1 else 's'}, "
-                f"but failed for {failed_count}."
-            )
-
-        else:
-
-            response_message = (
-                "Accident saved, but emergency emails "
-                "could not be sent."
-            )
-
-        return jsonify({
-            "success": True,
-            "message": response_message,
-            "accident_saved": accident_saved,
-            "email_sent": emails_sent > 0,
-            "emails_attempted": emails_attempted,
-            "emails_sent": emails_sent,
-            "contacts_found": len(contacts),
-            "hospital_name": hospital_name,
-            "hospital_lookup_message":
-                hospital_lookup_message,
-            "nearest_hospital":
-                nearest_hospital,
-            "severity": severity,
-            "latitude": latitude,
-            "longitude": longitude,
-            "maps_url": (
-                "https://www.google.com/maps/search/"
-                f"?api=1&query="
-                f"{latitude},{longitude}"
-            ),
-            "email_results": email_results,
-            "push_configured":
-                push_result.get(
-                    "configured",
-                    False
-                ),
-            "push_matched_contacts":
-                push_result.get(
-                    "matched_contacts",
-                    0
-                ),
-            "push_tokens_found":
-                push_result.get(
-                    "tokens_found",
-                    0
-                ),
-            "push_notifications_sent":
-                push_result.get(
-                    "notifications_sent",
-                    0
-                ),
-            "push_notifications_failed":
-                push_result.get(
-                    "notifications_failed",
-                    0
-                ),
-            "push_error":
-                push_result.get(
-                    "error"
-                )
-        }), 200
-
-    except Exception as error:
-
-        print(
-            "Automatic accident workflow error:",
-            error
-        )
-
-        return jsonify({
-            "success": False,
-            "message": (
-                "Accident workflow failed: "
-                f"{str(error)}"
-            ),
-            "accident_saved": accident_saved,
-            "email_sent": emails_sent > 0,
-            "emails_attempted": emails_attempted,
-            "emails_sent": emails_sent,
-            "hospital_name": hospital_name,
-            "nearest_hospital":
-                nearest_hospital,
-            "push_result":
-                push_result
-        }), 500
-
-    finally:
-
-        if cursor is not None:
-            cursor.close()
-
-        if (
-            connection is not None
-            and connection.is_connected()
-        ):
-            connection.close()
+    )
+
+    worker.start()
+
+    return jsonify({
+        "success": True,
+        "message": (
+            "Emergency workflow accepted. "
+            "Email and Firebase alerts are "
+            "processing in the background."
+        ),
+        "processing": True,
+        "job_id": job_id,
+        "accident_saved": False,
+        "email_sent": False,
+        "latitude": latitude,
+        "longitude": longitude,
+        "severity": severity
+    }), 202
