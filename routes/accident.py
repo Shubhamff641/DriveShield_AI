@@ -122,7 +122,9 @@ def _find_hospital_name(
 
     default_hospital_values = {
         "",
+        "nearest hospital",
         "nearest hospital not available",
+        "location shared through google maps",
         "not available",
         "unknown"
     }
@@ -144,7 +146,7 @@ def _find_hospital_name(
                 latitude=latitude,
                 longitude=longitude,
                 radius=15000,
-                request_timeout=5
+                request_timeout=20
             )
         )
 
