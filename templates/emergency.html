@@ -9,549 +9,978 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Emergency Contacts - DriveShield AI</title>
+    <meta
+        name="description"
+        content="Manage emergency contacts in DriveShield AI."
+    >
 
+    <title>Emergency Contacts | DriveShield AI</title>
+    <link
+    rel="icon"
+    type="image/png"
+    href="{{ url_for('static', filename='images/driveshield-logo.png') }}"
+>
+
+    <!-- Bootstrap -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
         rel="stylesheet"
     >
 
+    <!-- Bootstrap Icons -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Project CSS -->
     <link
         rel="stylesheet"
         href="{{ url_for('static', filename='css/style.css') }}"
     >
 
     <style>
-        body {
-            min-height: 100vh;
-            background:
-                linear-gradient(
-                    135deg,
-                    #eef4ff 0%,
-                    #f8f9fa 55%,
-                    #eef8f5 100%
-                );
+        .emergency-page {
+            min-height: calc(100vh - 72px);
         }
 
-        .page-header {
-            color: white;
+        .emergency-shell {
+            max-width: 1240px;
+        }
+
+        .emergency-hero {
+            position: relative;
+            overflow: hidden;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 26px;
+            background:
+                radial-gradient(
+                    circle at 86% 18%,
+                    rgba(251, 113, 133, 0.24),
+                    transparent 30%
+                ),
+                linear-gradient(
+                    135deg,
+                    #0f172a 0%,
+                    #be123c 56%,
+                    #7f1d1d 100%
+                );
+            box-shadow: 0 26px 60px rgba(15, 23, 42, 0.18);
+        }
+
+        .emergency-hero::before {
+            position: absolute;
+            top: -95px;
+            right: -55px;
+            width: 270px;
+            height: 270px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .emergency-hero::after {
+            position: absolute;
+            bottom: -135px;
+            left: 42%;
+            width: 300px;
+            height: 300px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(244, 63, 94, 0.13);
+        }
+
+        .emergency-hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .emergency-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 13px;
+            color: #ffe4e6;
+            border: 1px solid rgba(254, 205, 211, 0.24);
+            border-radius: 999px;
+            background: rgba(190, 18, 60, 0.20);
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+
+        .emergency-chip span {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #fb7185;
+            box-shadow: 0 0 0 6px rgba(251, 113, 133, 0.12);
+        }
+
+        .hero-visual {
+            display: grid;
+            min-height: 180px;
+            place-items: center;
+        }
+
+        .emergency-orbit {
+            position: relative;
+            display: grid;
+            width: 155px;
+            height: 155px;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.07);
+            box-shadow:
+                inset 0 0 45px rgba(255, 255, 255, 0.05),
+                0 20px 45px rgba(0, 0, 0, 0.18);
+        }
+
+        .emergency-orbit::before {
+            position: absolute;
+            inset: 17px;
+            content: "";
+            border: 1px dashed rgba(255, 255, 255, 0.28);
+            border-radius: 50%;
+        }
+
+        .emergency-orbit::after {
+            position: absolute;
+            inset: 39px;
+            content: "";
+            border-radius: 50%;
+            background: linear-gradient(
+                135deg,
+                rgba(244, 63, 94, 0.96),
+                rgba(220, 38, 38, 0.96)
+            );
+            box-shadow: 0 16px 36px rgba(220, 38, 38, 0.28);
+        }
+
+        .emergency-orbit i {
+            position: relative;
+            z-index: 2;
+            color: #ffffff;
+            font-size: 2.8rem;
+        }
+
+        .contact-form-card,
+        .contacts-list-card {
+            height: 100%;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.22);
             border-radius: 24px;
-            background:
-                linear-gradient(
-                    135deg,
-                    #dc3545,
-                    #8b1e3f
-                );
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.11);
         }
 
-        .content-card,
-        .contact-card {
-            border: 0;
-            border-radius: 20px;
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 20px 22px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.20);
+            background: rgba(248, 250, 252, 0.86);
+        }
+
+        .section-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-icon {
+            display: inline-flex;
+            width: 44px;
+            height: 44px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            color: #be123c;
+            border-radius: 13px;
+            background: linear-gradient(135deg, #ffe4e6, #fff1f2);
+            font-size: 1.2rem;
+        }
+
+        .primary-switch {
+            padding: 16px 16px 16px 52px;
+            border: 1px solid #fecdd3;
+            border-radius: 16px;
+            background: #fff1f2;
+        }
+
+        .primary-switch .form-check-input {
+            width: 2.8rem;
+            height: 1.45rem;
+            margin-left: -2.2rem;
+        }
+
+        .safety-note {
+            padding: 16px;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            background: #f8fafc;
+        }
+
+        .safety-note-icon {
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            color: #047857;
+            border-radius: 12px;
+            background: #d1fae5;
+        }
+
+        .contacts-count {
+            padding: 8px 12px;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+            border-radius: 999px;
+            background: #ffffff;
+            font-size: 0.82rem;
+            font-weight: 800;
         }
 
         .contact-card {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            background: #ffffff;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
             transition:
-                transform 0.2s ease,
-                box-shadow 0.2s ease;
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                border-color 0.25s ease;
         }
 
         .contact-card:hover {
-            transform: translateY(-2px);
-            box-shadow:
-                0 12px 28px
-                rgba(15, 23, 42, 0.12);
+            border-color: rgba(37, 99, 235, 0.22);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.11);
         }
 
-        .primary-contact {
-            border:
-                2px solid
-                rgba(25, 135, 84, 0.45);
+        .contact-card::after {
+            position: absolute;
+            right: -38px;
+            bottom: -42px;
+            width: 118px;
+            height: 118px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .contact-card.primary-contact {
+            border: 2px solid rgba(22, 163, 74, 0.42);
             background:
                 linear-gradient(
                     135deg,
                     #ffffff,
-                    #f0fff7
+                    #f0fdf4
                 );
         }
 
-        .contact-icon {
-            width: 54px;
-            height: 54px;
+        .contact-card.primary-contact::before {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 88px;
+            height: 88px;
+            content: "";
+            border-radius: 0 0 0 100%;
+            background: rgba(22, 163, 74, 0.08);
+        }
+
+        .contact-avatar {
             display: inline-flex;
+            width: 56px;
+            height: 56px;
+            flex: 0 0 auto;
             align-items: center;
             justify-content: center;
-            border-radius: 16px;
-            background: #fff1f2;
-            font-size: 27px;
+            color: #be123c;
+            border-radius: 17px;
+            background: linear-gradient(135deg, #ffe4e6, #fff1f2);
+            font-size: 1.5rem;
         }
 
-        .form-control,
-        .form-select {
-            min-height: 48px;
-            border-radius: 12px;
+        .contact-info-box {
+            height: 100%;
+            padding: 14px;
+            border: 1px solid #eef2f7;
+            border-radius: 14px;
+            background: #f8fafc;
         }
 
-        .form-check-input {
-            width: 2.8rem;
-            height: 1.45rem;
+        .contact-info-label {
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
 
-        .contact-value {
+        .contact-info-value {
+            margin-top: 4px;
+            color: #0f172a;
+            font-weight: 700;
             overflow-wrap: anywhere;
         }
 
-        .empty-state {
-            border:
-                2px dashed
-                #cbd5e1;
-            border-radius: 20px;
-            background: rgba(
-                255,
-                255,
-                255,
-                0.72
-            );
+        .primary-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 11px;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+            border-radius: 999px;
+            background: #f0fdf4;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .contact-actions {
+            position: relative;
+            z-index: 2;
         }
 
         .action-form {
             display: inline-block;
+        }
+
+        .empty-state-modern {
+            padding: 58px 24px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 20px;
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(248, 250, 252, 0.96),
+                    rgba(255, 255, 255, 0.96)
+                );
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            display: inline-flex;
+            width: 78px;
+            height: 78px;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            border-radius: 22px;
+            background: #e2e8f0;
+            font-size: 2rem;
+        }
+
+        .emergency-summary {
+            padding: 18px;
+            color: #7f1d1d;
+            border: 1px solid #fecaca;
+            border-radius: 18px;
+            background: #fef2f2;
+        }
+
+        @media (max-width: 991.98px) {
+            .emergency-hero {
+                border-radius: 20px;
+            }
+
+            .contact-form-card,
+            .contacts-list-card {
+                border-radius: 20px;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .hero-visual {
+                min-height: 140px;
+            }
+
+            .emergency-orbit {
+                width: 125px;
+                height: 125px;
+            }
+
+            .emergency-orbit i {
+                font-size: 2.2rem;
+            }
+
+            .section-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .contact-actions .btn,
+            .contact-actions form {
+                width: 100%;
+            }
+
+            .contact-actions form .btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <nav class="navbar navbar-dark bg-primary shadow-sm">
-        <div class="container-fluid">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid px-3 px-lg-4">
 
             <a
-                class="navbar-brand fw-bold"
+                class="navbar-brand"
                 href="{{ url_for('dashboard.dashboard_page') }}"
             >
-                🚗 DriveShield AI
-            </a>
-
-            <div class="d-flex align-items-center">
-
-                <span class="text-white me-3 d-none d-md-inline">
-                    Welcome,
-                    <b>{{ session["user_name"] }}</b>
+                <span class="icon-box">
+                    <i class="bi bi-shield-check"></i>
                 </span>
 
-                <a
-                    href="{{ url_for('auth.logout') }}"
-                    class="btn btn-light"
-                >
-                    Logout
-                </a>
+                <span>DriveShield AI</span>
+            </a>
+
+            <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#emergencyNavigation"
+                aria-controls="emergencyNavigation"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+            >
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div
+                class="collapse navbar-collapse"
+                id="emergencyNavigation"
+            >
+                <div class="navbar-nav ms-auto align-items-lg-center">
+
+                    <a
+                        class="nav-link"
+                        href="{{ url_for('dashboard.dashboard_page') }}"
+                    >
+                        <i class="bi bi-grid me-1"></i>
+                        Dashboard
+                    </a>
+
+                    <a
+                        class="nav-link active"
+                        href="{{ url_for('emergency.emergency_page') }}"
+                    >
+                        <i class="bi bi-telephone-outbound me-1"></i>
+                        Emergency Contacts
+                    </a>
+
+                    <div class="d-flex align-items-center gap-2 ms-lg-3 mt-3 mt-lg-0">
+                        <div class="text-white d-none d-xl-block">
+                            <small class="text-white-50 d-block">
+                                Signed in as
+                            </small>
+
+                            <strong>
+                                {{ session["user_name"] }}
+                            </strong>
+                        </div>
+
+                        <a
+                            href="{{ url_for('auth.logout') }}"
+                            class="btn btn-outline-light"
+                        >
+                            <i class="bi bi-box-arrow-right me-2"></i>
+                            Logout
+                        </a>
+                    </div>
+
+                </div>
             </div>
         </div>
     </nav>
 
-    <main class="container py-5">
+    <main class="emergency-page">
+        <div class="container emergency-shell py-4 py-lg-5">
 
-        <section class="page-header shadow p-4 p-md-5 mb-4">
+            <!-- Hero -->
+            <section class="emergency-hero mb-4 fade-up">
+                <div class="emergency-hero-content">
+                    <div class="row align-items-center g-4 p-4 p-lg-5">
 
-            <div class="row align-items-center g-4">
-
-                <div class="col-md">
-
-                    <p class="mb-2 opacity-75">
-                        DriveShield AI Safety
-                    </p>
-
-                    <h1 class="fw-bold mb-2">
-                        🆘 Emergency Contacts
-                    </h1>
-
-                    <p class="mb-0 opacity-75">
-                        The primary contact receives the automatic
-                        phone call. All eligible contacts can receive
-                        email and Firebase emergency alerts.
-                    </p>
-                </div>
-
-                <div class="col-md-auto">
-
-                    <a
-                        href="{{ url_for('dashboard.dashboard_page') }}"
-                        class="btn btn-light"
-                    >
-                        ← Dashboard
-                    </a>
-                </div>
-            </div>
-        </section>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-
-            {% if messages %}
-
-                {% for category, message in messages %}
-
-                    <div
-                        class="alert alert-{{ category }} alert-dismissible fade show shadow-sm"
-                        role="alert"
-                    >
-                        {{ message }}
-
-                        <button
-                            type="button"
-                            class="btn-close"
-                            data-bs-dismiss="alert"
-                            aria-label="Close"
-                        ></button>
-                    </div>
-
-                {% endfor %}
-
-            {% endif %}
-
-        {% endwith %}
-
-        <div class="row g-4">
-
-            <div class="col-lg-5">
-
-                <section class="card content-card shadow-sm">
-
-                    <div class="card-body p-4">
-
-                        <div class="d-flex align-items-center mb-4">
-
-                            <div class="contact-icon me-3">
-                                ➕
+                        <div class="col-lg-8">
+                            <div class="emergency-chip mb-3">
+                                <span></span>
+                                Emergency communication setup
                             </div>
 
-                            <div>
-                                <h2 class="h4 fw-bold mb-1">
-                                    Add Emergency Contact
-                                </h2>
+                            <h1 class="display-5 fw-bold text-white mb-3">
+                                Emergency Contacts
+                            </h1>
 
-                                <p class="text-secondary mb-0">
-                                    The first saved contact becomes
-                                    primary automatically.
-                                </p>
+                            <p class="lead text-white-50 mb-4">
+                                The primary contact receives the automatic phone
+                                call. Eligible contacts may also receive email
+                                and Firebase emergency alerts.
+                            </p>
+
+                            <a
+                                href="{{ url_for('dashboard.dashboard_page') }}"
+                                class="btn btn-light btn-lg px-4"
+                            >
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Back to Dashboard
+                            </a>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <div class="hero-visual">
+                                <div class="emergency-orbit">
+                                    <i class="bi bi-telephone-outbound"></i>
+                                </div>
                             </div>
                         </div>
 
-                        <form
-                            method="POST"
-                            action="{{ url_for('emergency.emergency_page') }}"
-                        >
+                    </div>
+                </div>
+            </section>
 
-                            <div class="mb-3">
-
-                                <label
-                                    for="contact_name"
-                                    class="form-label fw-semibold"
-                                >
-                                    Contact Name
-                                </label>
-
-                                <input
-                                    type="text"
-                                    id="contact_name"
-                                    name="contact_name"
-                                    class="form-control"
-                                    placeholder="Example: Rahul Jadhav"
-                                    autocomplete="name"
-                                    required
-                                >
-                            </div>
-
-                            <div class="mb-3">
-
-                                <label
-                                    for="relationship"
-                                    class="form-label fw-semibold"
-                                >
-                                    Relationship
-                                </label>
-
-                                <input
-                                    type="text"
-                                    id="relationship"
-                                    name="relationship"
-                                    class="form-control"
-                                    placeholder="Example: Brother"
-                                    required
-                                >
-                            </div>
-
-                            <div class="mb-3">
-
-                                <label
-                                    for="phone"
-                                    class="form-label fw-semibold"
-                                >
-                                    Phone Number
-                                </label>
-
-                                <input
-                                    type="tel"
-                                    id="phone"
-                                    name="phone"
-                                    class="form-control"
-                                    placeholder="Example: +91 9876543210"
-                                    autocomplete="tel"
-                                    required
-                                >
-                            </div>
-
-                            <div class="mb-3">
-
-                                <label
-                                    for="contact_email"
-                                    class="form-label fw-semibold"
-                                >
-                                    Email Address
-                                </label>
-
-                                <input
-                                    type="email"
-                                    id="contact_email"
-                                    name="contact_email"
-                                    class="form-control"
-                                    placeholder="Example: contact@gmail.com"
-                                    autocomplete="email"
-                                >
-
-                                <div class="form-text">
-                                    Required for Brevo email alerts.
-                                </div>
-                            </div>
-
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <section class="mb-4">
+                        {% for category, message in messages %}
                             <div
-                                class="form-check form-switch border rounded-3 p-3 ps-5 mb-4"
+                                class="alert alert-{{ category }} alert-dismissible fade show"
+                                role="alert"
                             >
-
-                                <input
-                                    class="form-check-input"
-                                    type="checkbox"
-                                    role="switch"
-                                    id="is_primary"
-                                    name="is_primary"
-                                    value="1"
-                                >
-
-                                <label
-                                    class="form-check-label fw-semibold"
-                                    for="is_primary"
-                                >
-                                    Set as primary contact
-                                </label>
-
-                                <div class="small text-secondary mt-1">
-                                    Only one contact can be primary.
-                                </div>
-                            </div>
-
-                            <div class="d-grid">
+                                <i class="bi bi-info-circle me-2"></i>
+                                {{ message }}
 
                                 <button
-                                    type="submit"
-                                    class="btn btn-danger btn-lg"
-                                >
-                                    Save Emergency Contact
-                                </button>
+                                    type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="alert"
+                                    aria-label="Close"
+                                ></button>
                             </div>
-                        </form>
+                        {% endfor %}
+                    </section>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Emergency summary -->
+            <section class="emergency-summary mb-4">
+                <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
+                    <div class="section-icon">
+                        <i class="bi bi-exclamation-triangle"></i>
                     </div>
-                </section>
-            </div>
 
-            <div class="col-lg-7">
+                    <div class="flex-grow-1">
+                        <strong class="d-block mb-1">
+                            Keep at least one verified emergency contact
+                        </strong>
 
-                <section class="card content-card shadow-sm">
+                        <span class="small">
+                            Confirm the phone number and email address before
+                            relying on the contact during a real emergency.
+                        </span>
+                    </div>
 
-                    <div class="card-body p-4">
+                    <span class="contacts-count">
+                        {{ contacts|length }}
+                        contact{% if contacts|length != 1 %}s{% endif %}
+                    </span>
+                </div>
+            </section>
 
-                        <div
-                            class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4"
-                        >
-                            <div>
-                                <h2 class="h4 fw-bold mb-1">
-                                    Saved Contacts
-                                </h2>
+            <div class="row g-4 align-items-start">
 
-                                <p class="text-secondary mb-0">
-                                    Primary contact is shown first.
-                                </p>
+                <!-- Add contact -->
+                <div class="col-lg-5">
+                    <section class="contact-form-card">
+
+                        <header class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">
+                                    <i class="bi bi-person-plus"></i>
+                                </div>
+
+                                <div>
+                                    <h2 class="h5 mb-1">
+                                        Add Emergency Contact
+                                    </h2>
+
+                                    <p class="small text-muted mb-0">
+                                        The first saved contact becomes primary automatically.
+                                    </p>
+                                </div>
                             </div>
+                        </header>
 
-                            <span class="badge text-bg-secondary rounded-pill">
-                                {{ contacts|length }} contact{% if contacts|length != 1 %}s{% endif %}
-                            </span>
-                        </div>
+                        <div class="p-3 p-md-4">
+                            <form
+                                method="POST"
+                                action="{{ url_for('emergency.emergency_page') }}"
+                            >
 
-                        {% if contacts %}
+                                <!-- Name -->
+                                <div class="mb-3">
+                                    <label
+                                        for="contact_name"
+                                        class="form-label"
+                                    >
+                                        Contact Name
+                                    </label>
 
-                            <div class="d-grid gap-3">
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-person"></i>
+                                        </span>
 
-                                {% for contact in contacts %}
+                                        <input
+                                            type="text"
+                                            id="contact_name"
+                                            name="contact_name"
+                                            class="form-control"
+                                            placeholder="Example: Rahul Jadhav"
+                                            autocomplete="name"
+                                            minlength="2"
+                                            required
+                                        >
+                                    </div>
+                                </div>
 
-                                    <article
-                                        class="card contact-card shadow-sm {% if contact.is_primary %}primary-contact{% endif %}"
+                                <!-- Relationship -->
+                                <div class="mb-3">
+                                    <label
+                                        for="relationship"
+                                        class="form-label"
+                                    >
+                                        Relationship
+                                    </label>
+
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-people"></i>
+                                        </span>
+
+                                        <input
+                                            type="text"
+                                            id="relationship"
+                                            name="relationship"
+                                            class="form-control"
+                                            placeholder="Example: Brother"
+                                            required
+                                        >
+                                    </div>
+                                </div>
+
+                                <!-- Phone -->
+                                <div class="mb-3">
+                                    <label
+                                        for="phone"
+                                        class="form-label"
+                                    >
+                                        Phone Number
+                                    </label>
+
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-telephone"></i>
+                                        </span>
+
+                                        <input
+                                            type="tel"
+                                            id="phone"
+                                            name="phone"
+                                            class="form-control"
+                                            placeholder="Example: +91 9876543210"
+                                            autocomplete="tel"
+                                            required
+                                        >
+                                    </div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="mb-3">
+                                    <label
+                                        for="contact_email"
+                                        class="form-label"
+                                    >
+                                        Email Address
+                                    </label>
+
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-envelope"></i>
+                                        </span>
+
+                                        <input
+                                            type="email"
+                                            id="contact_email"
+                                            name="contact_email"
+                                            class="form-control"
+                                            placeholder="Example: contact@gmail.com"
+                                            autocomplete="email"
+                                        >
+                                    </div>
+
+                                    <div class="form-text">
+                                        Required for Brevo email alerts.
+                                    </div>
+                                </div>
+
+                                <!-- Primary contact -->
+                                <div class="form-check form-switch primary-switch mb-4">
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        role="switch"
+                                        id="is_primary"
+                                        name="is_primary"
+                                        value="1"
                                     >
 
-                                        <div class="card-body p-4">
+                                    <label
+                                        class="form-check-label fw-bold"
+                                        for="is_primary"
+                                    >
+                                        Set as primary contact
+                                    </label>
 
-                                            <div
-                                                class="d-flex justify-content-between align-items-start gap-3"
-                                            >
+                                    <div class="small text-muted mt-1">
+                                        Only one contact can be primary at a time.
+                                    </div>
+                                </div>
 
-                                                <div class="d-flex align-items-start">
+                                <!-- Safety note -->
+                                <div class="safety-note mb-4">
+                                    <div class="d-flex gap-3">
+                                        <div class="safety-note-icon">
+                                            <i class="bi bi-shield-check"></i>
+                                        </div>
 
-                                                    <div class="contact-icon me-3">
-                                                        👤
-                                                    </div>
+                                        <div>
+                                            <strong class="d-block mb-1">
+                                                Verify the contact details
+                                            </strong>
 
-                                                    <div>
+                                            <span class="small">
+                                                Use a phone number and email address
+                                                that the contact actively checks.
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                                        <div
-                                                            class="d-flex align-items-center flex-wrap gap-2 mb-1"
-                                                        >
+                                <div class="d-grid">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-danger btn-lg"
+                                    >
+                                        <i class="bi bi-person-check me-2"></i>
+                                        Save Emergency Contact
+                                    </button>
+                                </div>
 
-                                                            <h3 class="h5 fw-bold mb-0">
-                                                                {{ contact.contact_name }}
-                                                            </h3>
+                            </form>
+                        </div>
+                    </section>
+                </div>
 
-                                                            {% if contact.is_primary %}
+                <!-- Saved contacts -->
+                <div class="col-lg-7">
+                    <section class="contacts-list-card">
 
-                                                                <span
-                                                                    class="badge text-bg-success rounded-pill"
-                                                                >
-                                                                    ★ Primary
-                                                                </span>
+                        <header class="section-header">
+                            <div class="section-title-group">
+                                <div class="section-icon">
+                                    <i class="bi bi-person-lines-fill"></i>
+                                </div>
 
-                                                            {% endif %}
+                                <div>
+                                    <h2 class="h5 mb-1">
+                                        Saved Contacts
+                                    </h2>
+
+                                    <p class="small text-muted mb-0">
+                                        The primary emergency contact is shown first.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <span class="contacts-count">
+                                {{ contacts|length }}
+                                contact{% if contacts|length != 1 %}s{% endif %}
+                            </span>
+                        </header>
+
+                        <div class="p-3 p-md-4">
+
+                            {% if contacts %}
+                                <div class="d-grid gap-3">
+
+                                    {% for contact in contacts %}
+                                        <article
+                                            class="contact-card {% if contact.is_primary %}primary-contact{% endif %}"
+                                        >
+                                            <div class="p-3 p-md-4">
+
+                                                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-start gap-3">
+
+                                                    <div class="d-flex align-items-start gap-3">
+                                                        <div class="contact-avatar">
+                                                            <i class="bi bi-person"></i>
                                                         </div>
 
-                                                        <p class="text-secondary mb-0">
-                                                            {{ contact.relationship }}
-                                                        </p>
+                                                        <div>
+                                                            <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                                                <h3 class="h5 mb-0">
+                                                                    {{ contact.contact_name }}
+                                                                </h3>
+
+                                                                {% if contact.is_primary %}
+                                                                    <span class="primary-badge">
+                                                                        <i class="bi bi-star-fill"></i>
+                                                                        Primary
+                                                                    </span>
+                                                                {% endif %}
+                                                            </div>
+
+                                                            <p class="text-muted mb-0">
+                                                                {{ contact.relationship }}
+                                                            </p>
+                                                        </div>
                                                     </div>
+
+                                                    {% if contact.is_primary %}
+                                                        <span class="badge bg-success-subtle text-success">
+                                                            Active primary
+                                                        </span>
+                                                    {% endif %}
                                                 </div>
-                                            </div>
 
-                                            <hr>
+                                                <div class="row g-3 mt-2">
 
-                                            <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <div class="contact-info-box">
+                                                            <div class="contact-info-label">
+                                                                Phone
+                                                            </div>
 
-                                                <div class="col-md-6">
-
-                                                    <div class="small text-secondary">
-                                                        Phone
+                                                            <div class="contact-info-value">
+                                                                <i class="bi bi-telephone me-1 text-primary"></i>
+                                                                {{ contact.contact_phone }}
+                                                            </div>
+                                                        </div>
                                                     </div>
 
-                                                    <div class="fw-semibold contact-value">
-                                                        {{ contact.contact_phone }}
+                                                    <div class="col-md-6">
+                                                        <div class="contact-info-box">
+                                                            <div class="contact-info-label">
+                                                                Email
+                                                            </div>
+
+                                                            <div class="contact-info-value">
+                                                                {% if contact.contact_email %}
+                                                                    <i class="bi bi-envelope me-1 text-primary"></i>
+                                                                    {{ contact.contact_email }}
+                                                                {% else %}
+                                                                    <span class="text-muted">
+                                                                        Not added
+                                                                    </span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
                                                     </div>
+
                                                 </div>
 
-                                                <div class="col-md-6">
+                                                <div class="contact-actions d-flex flex-wrap gap-2 mt-4">
 
-                                                    <div class="small text-secondary">
-                                                        Email
-                                                    </div>
+                                                    <a
+                                                        href="{{ url_for('emergency.edit_contact', id=contact.id) }}"
+                                                        class="btn btn-outline-primary"
+                                                    >
+                                                        <i class="bi bi-pencil-square me-2"></i>
+                                                        Edit
+                                                    </a>
 
-                                                    <div class="fw-semibold contact-value">
-
-                                                        {% if contact.contact_email %}
-
-                                                            {{ contact.contact_email }}
-
-                                                        {% else %}
-
-                                                            <span class="text-secondary">
-                                                                Not added
-                                                            </span>
-
-                                                        {% endif %}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                class="d-flex flex-wrap gap-2 mt-4"
-                                            >
-
-                                                <a
-                                                    href="{{ url_for('emergency.edit_contact', id=contact.id) }}"
-                                                    class="btn btn-outline-primary"
-                                                >
-                                                    Edit
-                                                </a>
-
-                                                {% if not contact.is_primary %}
+                                                    {% if not contact.is_primary %}
+                                                        <form
+                                                            method="POST"
+                                                            action="{{ url_for('emergency.set_primary_contact', id=contact.id) }}"
+                                                            class="action-form"
+                                                        >
+                                                            <button
+                                                                type="submit"
+                                                                class="btn btn-outline-success"
+                                                            >
+                                                                <i class="bi bi-star me-2"></i>
+                                                                Set as Primary
+                                                            </button>
+                                                        </form>
+                                                    {% endif %}
 
                                                     <form
                                                         method="POST"
-                                                        action="{{ url_for('emergency.set_primary_contact', id=contact.id) }}"
+                                                        action="{{ url_for('emergency.delete_contact', id=contact.id) }}"
                                                         class="action-form"
+                                                        onsubmit="return confirm('Delete this emergency contact?');"
                                                     >
-
                                                         <button
                                                             type="submit"
-                                                            class="btn btn-outline-success"
+                                                            class="btn btn-outline-danger"
                                                         >
-                                                            Set as Primary
+                                                            <i class="bi bi-trash me-2"></i>
+                                                            Delete
                                                         </button>
                                                     </form>
 
-                                                {% endif %}
-
-                                                <form
-                                                    method="POST"
-                                                    action="{{ url_for('emergency.delete_contact', id=contact.id) }}"
-                                                    class="action-form"
-                                                    onsubmit="return confirm('Delete this emergency contact?');"
-                                                >
-
-                                                    <button
-                                                        type="submit"
-                                                        class="btn btn-outline-danger"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </form>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </article>
+                                        </article>
+                                    {% endfor %}
 
-                                {% endfor %}
-                            </div>
-
-                        {% else %}
-
-                            <div class="empty-state text-center p-5">
-
-                                <div class="display-5 mb-3">
-                                    📇
                                 </div>
+                            {% else %}
+                                <div class="empty-state-modern">
+                                    <div class="empty-state-icon mb-3">
+                                        <i class="bi bi-person-plus"></i>
+                                    </div>
 
-                                <h3 class="h5 fw-bold">
-                                    No emergency contacts yet
-                                </h3>
+                                    <h3 class="h5 mb-2">
+                                        No emergency contacts yet
+                                    </h3>
 
-                                <p class="text-secondary mb-0">
-                                    Add the first contact using the form.
-                                    It will automatically become primary.
-                                </p>
-                            </div>
+                                    <p class="text-muted mb-0">
+                                        Add your first contact using the form.
+                                        It will automatically become the primary contact.
+                                    </p>
+                                </div>
+                            {% endif %}
 
-                        {% endif %}
-                    </div>
-                </section>
+                        </div>
+                    </section>
+                </div>
+
             </div>
         </div>
     </main>
 
+    <!-- Bootstrap JavaScript -->
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
     ></script>
+
 </body>
 
 </html>

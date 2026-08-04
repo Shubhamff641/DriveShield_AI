@@ -1,96 +1,896 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile - DriveShield AI</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Manage your DriveShield AI profile and account details."
+    >
+
+    <title>My Profile | DriveShield AI</title>
+    <link
+    rel="icon"
+    type="image/png"
+    href="{{ url_for('static', filename='images/driveshield-logo.png') }}"
+>
+
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Bootstrap Icons -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Project CSS -->
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
     <style>
-        body { min-height: 100vh; background: #f5f7fb; }
-        .profile-card { border: 0; border-radius: 22px; overflow: hidden; }
-        .profile-image { width: 130px; height: 130px; object-fit: cover; }
-        .form-control { min-height: 48px; border-radius: 12px; }
+        .profile-page {
+            min-height: calc(100vh - 72px);
+        }
+
+        .profile-shell {
+            max-width: 1120px;
+        }
+
+        .profile-hero {
+            position: relative;
+            overflow: hidden;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 26px;
+            background:
+                radial-gradient(
+                    circle at 88% 18%,
+                    rgba(56, 189, 248, 0.22),
+                    transparent 30%
+                ),
+                linear-gradient(
+                    135deg,
+                    #0f172a 0%,
+                    #1d4ed8 58%,
+                    #0891b2 100%
+                );
+            box-shadow: 0 26px 60px rgba(15, 23, 42, 0.18);
+        }
+
+        .profile-hero::before {
+            position: absolute;
+            top: -90px;
+            right: -55px;
+            width: 260px;
+            height: 260px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .profile-hero::after {
+            position: absolute;
+            bottom: -130px;
+            left: 42%;
+            width: 290px;
+            height: 290px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(6, 182, 212, 0.13);
+        }
+
+        .profile-hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .profile-hero-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 13px;
+            color: #dbeafe;
+            border: 1px solid rgba(191, 219, 254, 0.24);
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.18);
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+
+        .profile-hero-chip span {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #60a5fa;
+            box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.12);
+        }
+
+        .profile-summary-card,
+        .profile-form-card {
+            height: 100%;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.11);
+        }
+
+        .profile-summary-header {
+            position: relative;
+            overflow: hidden;
+            padding: 30px 24px 86px;
+            color: #ffffff;
+            background:
+                linear-gradient(
+                    135deg,
+                    #1d4ed8,
+                    #0891b2
+                );
+        }
+
+        .profile-summary-header::after {
+            position: absolute;
+            right: -60px;
+            bottom: -70px;
+            width: 180px;
+            height: 180px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.10);
+        }
+
+        .profile-avatar-wrapper {
+            position: relative;
+            width: fit-content;
+            margin: -66px auto 0;
+        }
+
+        .profile-avatar-large {
+            width: 138px;
+            height: 138px;
+            padding: 4px;
+            border: 5px solid #ffffff;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #ffffff;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+        }
+
+        .avatar-status {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            display: grid;
+            width: 28px;
+            height: 28px;
+            place-items: center;
+            color: #ffffff;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            background: #22c55e;
+            font-size: 0.75rem;
+        }
+
+        .profile-info-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 0;
+            border-bottom: 1px solid #eef2f7;
+        }
+
+        .profile-info-item:last-child {
+            border-bottom: 0;
+        }
+
+        .profile-info-icon {
+            display: inline-flex;
+            width: 42px;
+            height: 42px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            color: #2563eb;
+            border-radius: 12px;
+            background: #dbeafe;
+        }
+
+        .profile-info-label {
+            color: #64748b;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .profile-info-value {
+            color: #0f172a;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .form-section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 20px 22px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.20);
+            background: rgba(248, 250, 252, 0.86);
+        }
+
+        .form-section-icon {
+            display: inline-flex;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+            color: #2563eb;
+            border-radius: 13px;
+            background: linear-gradient(135deg, #dbeafe, #ecfeff);
+            font-size: 1.2rem;
+        }
+
+        .upload-zone {
+            position: relative;
+            padding: 22px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 17px;
+            background: #f8fafc;
+            transition:
+                border-color 0.25s ease,
+                background 0.25s ease,
+                transform 0.25s ease;
+        }
+
+        .upload-zone:hover {
+            border-color: #60a5fa;
+            background: #f0f7ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.dragover {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .upload-icon {
+            display: inline-flex;
+            width: 48px;
+            height: 48px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            color: #2563eb;
+            border-radius: 14px;
+            background: #dbeafe;
+            font-size: 1.3rem;
+        }
+
+        .selected-file {
+            display: none;
+            margin-top: 12px;
+            padding: 10px 12px;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+            border-radius: 10px;
+            background: #f0fdf4;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .profile-preview {
+            display: none;
+            width: 76px;
+            height: 76px;
+            margin-top: 14px;
+            border: 3px solid #ffffff;
+            border-radius: 16px;
+            object-fit: cover;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+        }
+
+        .account-note {
+            padding: 16px;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            background: #f8fafc;
+        }
+
+        .account-note-icon {
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            color: #047857;
+            border-radius: 12px;
+            background: #d1fae5;
+        }
+
+        .save-button {
+            min-height: 52px;
+            font-weight: 800;
+        }
+
+        @media (max-width: 991.98px) {
+            .profile-hero {
+                border-radius: 20px;
+            }
+
+            .profile-summary-card,
+            .profile-form-card {
+                border-radius: 20px;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .profile-avatar-large {
+                width: 118px;
+                height: 118px;
+            }
+
+            .profile-avatar-wrapper {
+                margin-top: -56px;
+            }
+
+            .profile-summary-header {
+                padding-bottom: 72px;
+            }
+
+            .upload-zone {
+                padding: 18px;
+            }
+        }
     </style>
 </head>
+
 <body>
-    <nav class="navbar navbar-dark bg-primary shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="{{ url_for('dashboard.dashboard_page') }}">🚗 DriveShield AI</a>
-            <div class="d-flex align-items-center">
-                <span class="text-white me-3 d-none d-md-inline">Welcome, <b>{{ session["user_name"] }}</b></span>
-                <a href="{{ url_for('auth.logout') }}" class="btn btn-light">Logout</a>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid px-3 px-lg-4">
+
+            <a
+                class="navbar-brand"
+                href="{{ url_for('dashboard.dashboard_page') }}"
+            >
+                <span class="icon-box">
+                    <i class="bi bi-shield-check"></i>
+                </span>
+
+                <span>DriveShield AI</span>
+            </a>
+
+            <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#profileNavigation"
+                aria-controls="profileNavigation"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+            >
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div
+                class="collapse navbar-collapse"
+                id="profileNavigation"
+            >
+                <div class="navbar-nav ms-auto align-items-lg-center">
+
+                    <a
+                        class="nav-link"
+                        href="{{ url_for('dashboard.dashboard_page') }}"
+                    >
+                        <i class="bi bi-grid me-1"></i>
+                        Dashboard
+                    </a>
+
+                    <a
+                        class="nav-link active"
+                        href="{{ url_for('profile.profile_page') }}"
+                    >
+                        <i class="bi bi-person me-1"></i>
+                        Profile
+                    </a>
+
+                    <div class="d-flex align-items-center gap-2 ms-lg-3 mt-3 mt-lg-0">
+                        <div class="text-white d-none d-xl-block">
+                            <small class="text-white-50 d-block">
+                                Signed in as
+                            </small>
+
+                            <strong>
+                                {{ session["user_name"] }}
+                            </strong>
+                        </div>
+
+                        <a
+                            href="{{ url_for('auth.logout') }}"
+                            class="btn btn-outline-light"
+                        >
+                            <i class="bi bi-box-arrow-right me-2"></i>
+                            Logout
+                        </a>
+                    </div>
+
+                </div>
             </div>
         </div>
     </nav>
 
-    <main class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <section class="card profile-card shadow-sm">
-                    <div class="card-header bg-primary text-white p-4">
-                        <h1 class="h3 fw-bold mb-0">👤 My Profile</h1>
-                    </div>
-                    <div class="card-body p-4 p-md-5">
-                        {% with messages = get_flashed_messages(with_categories=true) %}
-                            {% if messages %}
-                                {% for category, message in messages %}
-                                    <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-                                {% endfor %}
-                            {% endif %}
-                        {% endwith %}
+    <main class="profile-page">
+        <div class="container profile-shell py-4 py-lg-5">
 
-                        <form method="POST" enctype="multipart/form-data">
-                            <div class="text-center mb-4">
-                                <img
-                                    src="{{ url_for('profile.profile_image_file', user_id=user.id, v=(user.profile_image or 'default')) }}"
-                                    width="130"
-                                    height="130"
-                                    class="profile-image rounded-circle border border-4 border-white shadow"
-                                    alt="Profile picture"
-                                >
+            <!-- Hero -->
+            <section class="profile-hero mb-4 fade-up">
+                <div class="profile-hero-content">
+                    <div class="row align-items-center g-4 p-4 p-lg-5">
+
+                        <div class="col-lg-8">
+                            <div class="profile-hero-chip mb-3">
+                                <span></span>
+                                Personal account
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Profile Picture</label>
-                                <input
-                                    type="file"
-                                    name="profile_image"
-                                    class="form-control"
-                                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                                >
-                                <div class="form-text">PNG, JPG or JPEG. The image is stored permanently in the online database.</div>
-                            </div>
+                            <h1 class="display-5 fw-bold text-white mb-3">
+                                My Profile
+                            </h1>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Full Name</label>
-                                <input type="text" name="fullname" class="form-control" value="{{ user.full_name }}" required>
-                            </div>
+                            <p class="lead text-white-50 mb-4">
+                                Keep your contact information accurate so
+                                DriveShield AI can support account and emergency
+                                communication features.
+                            </p>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Email</label>
-                                <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">Phone Number</label>
-                                <input type="tel" name="phone" class="form-control" value="{{ user.phone }}" required>
-                            </div>
-
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-success btn-lg">Update Profile</button>
-                            </div>
-                        </form>
-
-                        <hr class="my-4">
-
-                        <div class="text-center">
-                            <a href="{{ url_for('dashboard.dashboard_page') }}" class="btn btn-outline-secondary">← Back to Dashboard</a>
+                            <a
+                                href="{{ url_for('dashboard.dashboard_page') }}"
+                                class="btn btn-light btn-lg px-4"
+                            >
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Back to Dashboard
+                            </a>
                         </div>
+
+                        <div class="col-lg-4 text-center text-lg-end">
+                            <i class="bi bi-person-circle display-1 text-white opacity-75"></i>
+                        </div>
+
                     </div>
-                </section>
+                </div>
+            </section>
+
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <section class="mb-4">
+                        {% for category, message in messages %}
+                            <div
+                                class="alert alert-{{ category }} alert-dismissible fade show"
+                                role="alert"
+                            >
+                                <i class="bi bi-info-circle me-2"></i>
+                                {{ message }}
+
+                                <button
+                                    type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="alert"
+                                    aria-label="Close"
+                                ></button>
+                            </div>
+                        {% endfor %}
+                    </section>
+                {% endif %}
+            {% endwith %}
+
+            <div class="row g-4 align-items-stretch">
+
+                <!-- Profile summary -->
+                <div class="col-lg-4">
+                    <aside class="profile-summary-card">
+
+                        <div class="profile-summary-header">
+                            <span class="badge bg-light text-primary">
+                                Account overview
+                            </span>
+                        </div>
+
+                        <div class="profile-avatar-wrapper">
+                            <img
+                                id="currentProfileImage"
+                                src="{{ url_for('profile.profile_image_file', user_id=user.id, v=(user.profile_image or 'default')) }}"
+                                class="profile-avatar-large"
+                                alt="Profile picture of {{ user.full_name }}"
+                            >
+
+                            <span
+                                class="avatar-status"
+                                title="Account active"
+                            >
+                                <i class="bi bi-check"></i>
+                            </span>
+                        </div>
+
+                        <div class="p-4 text-center">
+                            <h2 class="h4 mb-1">
+                                {{ user.full_name }}
+                            </h2>
+
+                            <p class="text-muted mb-4">
+                                DriveShield AI User
+                            </p>
+
+                            <div class="text-start">
+
+                                <div class="profile-info-item">
+                                    <div class="profile-info-icon">
+                                        <i class="bi bi-envelope"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="profile-info-label">
+                                            Email
+                                        </div>
+
+                                        <div class="profile-info-value">
+                                            {{ user.email }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="profile-info-item">
+                                    <div class="profile-info-icon">
+                                        <i class="bi bi-telephone"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="profile-info-label">
+                                            Phone
+                                        </div>
+
+                                        <div class="profile-info-value">
+                                            {{ user.phone }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="profile-info-item">
+                                    <div class="profile-info-icon">
+                                        <i class="bi bi-shield-check"></i>
+                                    </div>
+
+                                    <div>
+                                        <div class="profile-info-label">
+                                            Account status
+                                        </div>
+
+                                        <div class="profile-info-value text-success">
+                                            Active
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+
+                <!-- Edit form -->
+                <div class="col-lg-8">
+                    <section class="profile-form-card">
+
+                        <header class="form-section-header">
+                            <div class="form-section-icon">
+                                <i class="bi bi-pencil-square"></i>
+                            </div>
+
+                            <div>
+                                <h2 class="h5 mb-1">
+                                    Edit Profile Details
+                                </h2>
+
+                                <p class="small text-muted mb-0">
+                                    Update your profile image and personal information.
+                                </p>
+                            </div>
+                        </header>
+
+                        <div class="p-3 p-md-4 p-lg-5">
+                            <form
+                                method="POST"
+                                enctype="multipart/form-data"
+                                id="profileForm"
+                            >
+
+                                <!-- Profile picture -->
+                                <div class="mb-4">
+                                    <label
+                                        for="profile_image"
+                                        class="form-label"
+                                    >
+                                        Profile Picture
+                                    </label>
+
+                                    <div
+                                        id="uploadZone"
+                                        class="upload-zone"
+                                    >
+                                        <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+
+                                            <div class="upload-icon">
+                                                <i class="bi bi-cloud-arrow-up"></i>
+                                            </div>
+
+                                            <div class="flex-grow-1">
+                                                <h3 class="h6 mb-1">
+                                                    Choose a new profile image
+                                                </h3>
+
+                                                <p class="small text-muted mb-3">
+                                                    PNG, JPG or JPEG files are accepted.
+                                                </p>
+
+                                                <input
+                                                    type="file"
+                                                    id="profile_image"
+                                                    name="profile_image"
+                                                    class="form-control"
+                                                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                                                >
+
+                                                <div
+                                                    id="selectedFile"
+                                                    class="selected-file"
+                                                ></div>
+
+                                                <img
+                                                    id="profilePreview"
+                                                    class="profile-preview"
+                                                    alt="Selected profile image preview"
+                                                >
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <div class="form-text mt-2">
+                                        The uploaded image is stored permanently
+                                        in the online database.
+                                    </div>
+                                </div>
+
+                                <!-- Name -->
+                                <div class="mb-3">
+                                    <label
+                                        for="fullname"
+                                        class="form-label"
+                                    >
+                                        Full Name
+                                    </label>
+
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-person"></i>
+                                        </span>
+
+                                        <input
+                                            type="text"
+                                            id="fullname"
+                                            name="fullname"
+                                            class="form-control"
+                                            value="{{ user.full_name }}"
+                                            autocomplete="name"
+                                            minlength="2"
+                                            required
+                                        >
+                                    </div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="mb-3">
+                                    <label
+                                        for="email"
+                                        class="form-label"
+                                    >
+                                        Email Address
+                                    </label>
+
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-envelope"></i>
+                                        </span>
+
+                                        <input
+                                            type="email"
+                                            id="email"
+                                            name="email"
+                                            class="form-control"
+                                            value="{{ user.email }}"
+                                            autocomplete="email"
+                                            required
+                                        >
+                                    </div>
+                                </div>
+
+                                <!-- Phone -->
+                                <div class="mb-4">
+                                    <label
+                                        for="phone"
+                                        class="form-label"
+                                    >
+                                        Phone Number
+                                    </label>
+
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-telephone"></i>
+                                        </span>
+
+                                        <input
+                                            type="tel"
+                                            id="phone"
+                                            name="phone"
+                                            class="form-control"
+                                            value="{{ user.phone }}"
+                                            autocomplete="tel"
+                                            inputmode="numeric"
+                                            pattern="[0-9]{10}"
+                                            maxlength="10"
+                                            required
+                                        >
+                                    </div>
+
+                                    <div class="form-text">
+                                        Enter a valid 10-digit mobile number.
+                                    </div>
+                                </div>
+
+                                <!-- Privacy note -->
+                                <div class="account-note mb-4">
+                                    <div class="d-flex gap-3">
+                                        <div class="account-note-icon">
+                                            <i class="bi bi-shield-lock"></i>
+                                        </div>
+
+                                        <div>
+                                            <strong class="d-block mb-1">
+                                                Account information
+                                            </strong>
+
+                                            <span class="small">
+                                                Review your email and phone number
+                                                carefully before saving changes.
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Submit -->
+                                <div class="d-grid d-sm-flex justify-content-sm-end gap-2">
+                                    <a
+                                        href="{{ url_for('dashboard.dashboard_page') }}"
+                                        class="btn btn-outline-secondary px-4"
+                                    >
+                                        Cancel
+                                    </a>
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-success save-button px-4"
+                                    >
+                                        <i class="bi bi-check-circle me-2"></i>
+                                        Update Profile
+                                    </button>
+                                </div>
+
+                            </form>
+                        </div>
+                    </section>
+                </div>
+
             </div>
         </div>
     </main>
+
+    <!-- Bootstrap JavaScript -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+    ></script>
+
+    <!-- Profile image preview -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const imageInput = document.getElementById("profile_image");
+            const profilePreview = document.getElementById("profilePreview");
+            const selectedFile = document.getElementById("selectedFile");
+            const uploadZone = document.getElementById("uploadZone");
+
+            function showSelectedImage(file) {
+                if (!file) {
+                    profilePreview.style.display = "none";
+                    profilePreview.removeAttribute("src");
+                    selectedFile.style.display = "none";
+                    selectedFile.textContent = "";
+                    return;
+                }
+
+                const allowedTypes = [
+                    "image/png",
+                    "image/jpeg"
+                ];
+
+                if (!allowedTypes.includes(file.type)) {
+                    imageInput.value = "";
+                    profilePreview.style.display = "none";
+                    selectedFile.style.display = "block";
+                    selectedFile.textContent = "Please select a PNG, JPG or JPEG image.";
+                    selectedFile.style.color = "#991b1b";
+                    selectedFile.style.borderColor = "#fecaca";
+                    selectedFile.style.background = "#fef2f2";
+                    return;
+                }
+
+                const reader = new FileReader();
+
+                reader.onload = function (event) {
+                    profilePreview.src = event.target.result;
+                    profilePreview.style.display = "block";
+                };
+
+                reader.readAsDataURL(file);
+
+                selectedFile.textContent = "Selected: " + file.name;
+                selectedFile.style.display = "block";
+                selectedFile.style.color = "#166534";
+                selectedFile.style.borderColor = "#bbf7d0";
+                selectedFile.style.background = "#f0fdf4";
+            }
+
+            imageInput.addEventListener("change", function () {
+                showSelectedImage(this.files[0]);
+            });
+
+            ["dragenter", "dragover"].forEach(function (eventName) {
+                uploadZone.addEventListener(eventName, function (event) {
+                    event.preventDefault();
+                    uploadZone.classList.add("dragover");
+                });
+            });
+
+            ["dragleave", "drop"].forEach(function (eventName) {
+                uploadZone.addEventListener(eventName, function (event) {
+                    event.preventDefault();
+                    uploadZone.classList.remove("dragover");
+                });
+            });
+
+            uploadZone.addEventListener("drop", function (event) {
+                const files = event.dataTransfer.files;
+
+                if (files.length > 0) {
+                    imageInput.files = files;
+                    showSelectedImage(files[0]);
+                }
+            });
+        });
+    </script>
+
 </body>
+
 </html>

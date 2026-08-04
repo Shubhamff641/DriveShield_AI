@@ -9,62 +9,250 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>
-        Drowsiness Detection - DriveShield AI
-    </title>
+    <meta
+        name="description"
+        content="DriveShield AI browser-based driver drowsiness detection."
+    >
 
+    <title>Drowsiness Detection | DriveShield AI</title>
+    <link
+    rel="icon"
+    type="image/png"
+    href="{{ url_for('static', filename='images/driveshield-logo.png') }}"
+>
+
+    <!-- Bootstrap -->
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
         rel="stylesheet"
     >
 
+    <!-- Bootstrap Icons -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Project CSS -->
     <link
         rel="stylesheet"
         href="{{ url_for('static', filename='css/style.css') }}"
     >
 
     <style>
-        body {
-            min-height: 100vh;
-            background:
-                linear-gradient(
-                    135deg,
-                    #eef6ff 0%,
-                    #f8fafc 50%,
-                    #eefbf4 100%
-                );
+        .detection-page {
+            min-height: calc(100vh - 72px);
         }
 
         .detection-shell {
-            max-width: 1050px;
+            max-width: 1240px;
         }
 
-        .hero-card {
-            color: white;
-            border: 0;
-            border-radius: 24px;
+        .detection-hero {
+            position: relative;
+            overflow: hidden;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 26px;
             background:
+                radial-gradient(
+                    circle at 85% 20%,
+                    rgba(34, 211, 238, 0.24),
+                    transparent 30%
+                ),
                 linear-gradient(
                     135deg,
-                    #0f766e,
-                    #166534
+                    #0f172a 0%,
+                    #0f766e 55%,
+                    #166534 100%
                 );
+            box-shadow: 0 26px 60px rgba(15, 23, 42, 0.18);
         }
 
-        .camera-card,
-        .status-card {
-            border: 0;
-            border-radius: 22px;
+        .detection-hero::before {
+            position: absolute;
+            top: -90px;
+            right: -55px;
+            width: 260px;
+            height: 260px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .detection-hero::after {
+            position: absolute;
+            bottom: -120px;
+            left: 42%;
+            width: 270px;
+            height: 270px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(20, 184, 166, 0.13);
+        }
+
+        .detection-hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 13px;
+            color: #ccfbf1;
+            border: 1px solid rgba(153, 246, 228, 0.22);
+            border-radius: 999px;
+            background: rgba(13, 148, 136, 0.18);
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+
+        .hero-chip-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #5eead4;
+            box-shadow: 0 0 0 6px rgba(94, 234, 212, 0.12);
+        }
+
+        .hero-safety-visual {
+            display: grid;
+            min-height: 180px;
+            place-items: center;
+        }
+
+        .ai-orbit {
+            position: relative;
+            display: grid;
+            width: 155px;
+            height: 155px;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.07);
+            box-shadow:
+                inset 0 0 45px rgba(255, 255, 255, 0.05),
+                0 20px 45px rgba(0, 0, 0, 0.18);
+        }
+
+        .ai-orbit::before {
+            position: absolute;
+            inset: 17px;
+            content: "";
+            border: 1px dashed rgba(255, 255, 255, 0.28);
+            border-radius: 50%;
+            animation: orbitRotate 16s linear infinite;
+        }
+
+        .ai-orbit::after {
+            position: absolute;
+            inset: 39px;
+            content: "";
+            border-radius: 50%;
+            background: linear-gradient(
+                135deg,
+                rgba(20, 184, 166, 0.96),
+                rgba(34, 197, 94, 0.96)
+            );
+            box-shadow: 0 16px 36px rgba(20, 184, 166, 0.28);
+        }
+
+        .ai-orbit i {
+            position: relative;
+            z-index: 2;
+            color: #ffffff;
+            font-size: 2.8rem;
+        }
+
+        @keyframes orbitRotate {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .camera-panel,
+        .status-panel {
             overflow: hidden;
+            height: 100%;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.11);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 20px 22px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.20);
+            background: rgba(248, 250, 252, 0.86);
+        }
+
+        .panel-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel-icon {
+            display: inline-flex;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+            color: #0f766e;
+            border-radius: 13px;
+            background: linear-gradient(135deg, #ccfbf1, #dcfce7);
+            font-size: 1.2rem;
         }
 
         .camera-stage {
             position: relative;
             width: 100%;
-            aspect-ratio: 4 / 3;
             overflow: hidden;
-            border-radius: 18px;
-            background: #111827;
+            aspect-ratio: 4 / 3;
+            border: 1px solid rgba(56, 189, 248, 0.16);
+            border-radius: 20px;
+            background:
+                radial-gradient(
+                    circle at center,
+                    #1e293b,
+                    #020617
+                );
+            box-shadow:
+                inset 0 0 55px rgba(15, 23, 42, 0.8),
+                0 16px 35px rgba(15, 23, 42, 0.16);
+        }
+
+        .camera-stage::before {
+            position: absolute;
+            inset: 14px;
+            z-index: 3;
+            content: "";
+            pointer-events: none;
+            border: 1px solid rgba(34, 211, 238, 0.26);
+            border-radius: 15px;
+            box-shadow:
+                inset 0 0 24px rgba(34, 211, 238, 0.05),
+                0 0 25px rgba(34, 211, 238, 0.04);
+        }
+
+        .camera-stage::after {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            z-index: 3;
+            width: 58%;
+            height: 72%;
+            content: "";
+            pointer-events: none;
+            border: 1px dashed rgba(94, 234, 212, 0.22);
+            border-radius: 46% 46% 42% 42%;
+            transform: translate(-50%, -50%);
         }
 
         #cameraVideo,
@@ -77,433 +265,905 @@
             transform: scaleX(-1);
         }
 
+        #cameraVideo {
+            z-index: 1;
+        }
+
         #landmarkCanvas {
+            z-index: 2;
             pointer-events: none;
         }
 
         .camera-placeholder {
             position: absolute;
             inset: 0;
+            z-index: 2;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 24px;
+            padding: 28px;
+            color: #cbd5e1;
             text-align: center;
-            color: #d1d5db;
             background:
                 radial-gradient(
                     circle at center,
-                    #1f2937,
-                    #111827
+                    rgba(30, 41, 59, 0.98),
+                    rgba(2, 6, 23, 0.98)
                 );
         }
 
         .camera-placeholder-icon {
-            font-size: 58px;
+            display: inline-flex;
+            width: 84px;
+            height: 84px;
+            align-items: center;
+            justify-content: center;
+            color: #67e8f9;
+            border: 1px solid rgba(103, 232, 249, 0.18);
+            border-radius: 24px;
+            background: rgba(8, 145, 178, 0.10);
+            font-size: 2.2rem;
+            box-shadow: 0 18px 35px rgba(2, 6, 23, 0.28);
         }
 
         .camera-badge {
             position: absolute;
-            top: 14px;
-            left: 14px;
-            z-index: 4;
-            padding: 7px 12px;
+            top: 25px;
+            left: 25px;
+            z-index: 5;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 12px;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.14);
             border-radius: 999px;
-            font-size: 13px;
-            font-weight: 700;
-            color: white;
-            background: rgba(17, 24, 39, 0.78);
-            backdrop-filter: blur(8px);
+            background: rgba(15, 23, 42, 0.76);
+            box-shadow: 0 8px 22px rgba(2, 6, 23, 0.22);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .camera-badge::before {
+            width: 8px;
+            height: 8px;
+            content: "";
+            border-radius: 50%;
+            background: #94a3b8;
         }
 
         .alert-overlay {
             position: absolute;
             inset: 0;
-            z-index: 5;
+            z-index: 10;
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 22px;
+            padding: 24px;
+            color: #ffffff;
             text-align: center;
-            color: white;
-            background: rgba(185, 28, 28, 0.82);
-            animation: alertPulse 0.8s infinite alternate;
+            background:
+                radial-gradient(
+                    circle at center,
+                    rgba(239, 68, 68, 0.88),
+                    rgba(127, 29, 29, 0.94)
+                );
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            animation: dangerPulse 0.85s infinite alternate;
         }
 
         .alert-overlay.active {
             display: flex;
         }
 
-        @keyframes alertPulse {
+        .alert-icon {
+            display: inline-flex;
+            width: 96px;
+            height: 96px;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255, 255, 255, 0.32);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.13);
+            font-size: 3rem;
+            box-shadow: 0 18px 35px rgba(69, 10, 10, 0.32);
+        }
+
+        @keyframes dangerPulse {
             from {
-                background: rgba(185, 28, 28, 0.72);
+                background-color: rgba(153, 27, 27, 0.82);
             }
 
             to {
-                background: rgba(220, 38, 38, 0.9);
+                background-color: rgba(220, 38, 38, 0.94);
             }
         }
 
-        .metric-box {
-            height: 100%;
-            padding: 18px;
-            border-radius: 17px;
-            text-align: center;
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-        }
-
-        .metric-label {
-            color: #6b7280;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .metric-value {
-            margin-top: 5px;
-            font-size: 22px;
-            font-weight: 800;
-            color: #111827;
-        }
-
-        .status-message {
-            min-height: 52px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 15px;
-            font-weight: 700;
-            background: #eff6ff;
-            color: #1d4ed8;
-        }
-
-        .status-message.success {
-            background: #ecfdf5;
-            color: #047857;
-        }
-
-        .status-message.warning {
-            background: #fff7ed;
-            color: #c2410c;
-        }
-
-        .status-message.danger {
-            background: #fef2f2;
-            color: #b91c1c;
+        .control-bar {
+            padding-top: 18px;
         }
 
         .control-button {
-            min-height: 48px;
+            min-height: 50px;
             border-radius: 13px;
-            font-weight: 700;
+            font-weight: 800;
+        }
+
+        .status-message {
+            display: flex;
+            min-height: 58px;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            padding: 13px 16px;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            border-radius: 15px;
+            background: #eff6ff;
+            font-weight: 800;
+            text-align: center;
+            transition:
+                color 0.25s ease,
+                background 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        .status-message.success {
+            color: #047857;
+            border-color: #a7f3d0;
+            background: #ecfdf5;
+        }
+
+        .status-message.warning {
+            color: #c2410c;
+            border-color: #fed7aa;
+            background: #fff7ed;
+        }
+
+        .status-message.danger {
+            color: #b91c1c;
+            border-color: #fecaca;
+            background: #fef2f2;
+        }
+
+        .metric-box {
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+            min-height: 132px;
+            padding: 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 17px;
+            background:
+                linear-gradient(
+                    145deg,
+                    #ffffff,
+                    #f8fafc
+                );
+            box-shadow: 0 7px 20px rgba(15, 23, 42, 0.05);
+        }
+
+        .metric-box::after {
+            position: absolute;
+            right: -28px;
+            bottom: -28px;
+            width: 84px;
+            height: 84px;
+            content: "";
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.06);
+        }
+
+        .metric-icon {
+            position: relative;
+            z-index: 2;
+            display: inline-flex;
+            width: 38px;
+            height: 38px;
+            margin-bottom: 13px;
+            align-items: center;
+            justify-content: center;
+            color: #0f766e;
+            border-radius: 11px;
+            background: #ccfbf1;
+        }
+
+        .metric-label {
+            position: relative;
+            z-index: 2;
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            position: relative;
+            z-index: 2;
+            margin-top: 5px;
+            color: #0f172a;
+            font-size: clamp(1rem, 2.4vw, 1.42rem);
+            font-weight: 850;
+            line-height: 1.2;
+            word-break: break-word;
         }
 
         .privacy-note {
+            padding: 16px;
+            color: #475569;
+            border: 1px solid #e2e8f0;
             border-radius: 16px;
             background: #f8fafc;
-            color: #475569;
+        }
+
+        .privacy-icon {
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            color: #047857;
+            border-radius: 12px;
+            background: #d1fae5;
+        }
+
+        .threshold-card {
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            background: #ffffff;
+        }
+
+        .threshold-line {
+            height: 8px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #e2e8f0;
+        }
+
+        .threshold-line span {
+            display: block;
+            width: 62.5%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444);
+        }
+
+        .tip-card {
+            border: 1px solid rgba(14, 116, 144, 0.16);
+            border-radius: 18px;
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(236, 254, 255, 0.96),
+                    rgba(240, 253, 250, 0.96)
+                );
+        }
+
+        @media (max-width: 991.98px) {
+            .hero-safety-visual {
+                min-height: 140px;
+            }
+
+            .camera-panel,
+            .status-panel {
+                border-radius: 20px;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .detection-hero {
+                border-radius: 20px;
+            }
+
+            .ai-orbit {
+                width: 125px;
+                height: 125px;
+            }
+
+            .ai-orbit i {
+                font-size: 2.2rem;
+            }
+
+            .panel-header {
+                padding: 16px;
+            }
+
+            .camera-stage {
+                border-radius: 16px;
+            }
+
+            .camera-stage::before {
+                inset: 9px;
+            }
+
+            .camera-badge {
+                top: 17px;
+                left: 17px;
+            }
+
+            .metric-box {
+                min-height: 120px;
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .camera-stage {
+                aspect-ratio: 3 / 4;
+            }
+
+            .camera-stage::after {
+                width: 72%;
+                height: 66%;
+            }
+
+            .camera-placeholder {
+                padding: 20px;
+            }
+
+            .camera-placeholder-icon {
+                width: 72px;
+                height: 72px;
+                font-size: 1.9rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .ai-orbit::before {
+                animation: none;
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <nav class="navbar navbar-dark bg-primary shadow-sm">
-
-        <div class="container-fluid">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid px-3 px-lg-4">
 
             <a
-                class="navbar-brand fw-bold"
+                class="navbar-brand"
                 href="{{ url_for('dashboard.dashboard_page') }}"
             >
-                🚗 DriveShield AI
-            </a>
-
-            <div class="d-flex align-items-center">
-
-                <span class="text-white me-3 d-none d-md-inline">
-                    Welcome,
-                    <b>{{ session["user_name"] }}</b>
+                <span class="icon-box">
+                    <i class="bi bi-shield-check"></i>
                 </span>
 
-                <a
-                    href="{{ url_for('auth.logout') }}"
-                    class="btn btn-light"
-                >
-                    Logout
-                </a>
+                <span>DriveShield AI</span>
+            </a>
+
+            <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#cameraNavigation"
+                aria-controls="cameraNavigation"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+            >
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div
+                class="collapse navbar-collapse"
+                id="cameraNavigation"
+            >
+                <div class="navbar-nav ms-auto align-items-lg-center">
+
+                    <a
+                        class="nav-link"
+                        href="{{ url_for('dashboard.dashboard_page') }}"
+                    >
+                        <i class="bi bi-grid me-1"></i>
+                        Dashboard
+                    </a>
+
+                    <a
+                        class="nav-link active"
+                        href="{{ url_for('camera.camera_page') }}"
+                    >
+                        <i class="bi bi-camera-video me-1"></i>
+                        Detection
+                    </a>
+
+                    <div class="d-flex align-items-center gap-2 ms-lg-3 mt-3 mt-lg-0">
+                        <div class="text-white d-none d-xl-block">
+                            <small class="text-white-50 d-block">
+                                Signed in as
+                            </small>
+
+                            <strong>
+                                {{ session["user_name"] }}
+                            </strong>
+                        </div>
+
+                        <a
+                            href="{{ url_for('auth.logout') }}"
+                            class="btn btn-outline-light"
+                        >
+                            <i class="bi bi-box-arrow-right me-2"></i>
+                            Logout
+                        </a>
+                    </div>
+
+                </div>
             </div>
         </div>
     </nav>
 
     <main
         id="drowsinessApp"
-        class="container detection-shell py-4 py-md-5"
+        class="detection-page"
         data-alarm-url="{{ url_for('static', filename='sounds/alarm.mp3') }}"
     >
+        <div class="container detection-shell py-4 py-lg-5">
 
-        <section class="hero-card shadow p-4 p-md-5 mb-4">
+            <!-- Hero -->
+            <section class="detection-hero mb-4 fade-up">
+                <div class="detection-hero-content">
+                    <div class="row align-items-center g-4 p-4 p-lg-5">
 
-            <div class="row align-items-center g-4">
+                        <div class="col-lg-8">
+                            <div class="hero-chip mb-3">
+                                <span class="hero-chip-dot"></span>
+                                Browser-based AI monitoring
+                            </div>
 
-                <div class="col-md">
+                            <h1 class="display-5 fw-bold text-white mb-3">
+                                Drowsiness Detection
+                            </h1>
 
-                    <p class="mb-2 opacity-75">
-                        AI Driver Safety
-                    </p>
+                            <p class="lead text-white-50 mb-4">
+                                Keep your face clearly visible, sit in a stable
+                                position and look toward the front camera while
+                                DriveShield AI monitors eye activity.
+                            </p>
 
-                    <h1 class="fw-bold mb-2">
-                        😴 Web Drowsiness Detection
-                    </h1>
+                            <div class="d-flex flex-column flex-sm-row gap-3">
+                                <a
+                                    href="#detectionWorkspace"
+                                    class="btn btn-light btn-lg px-4"
+                                >
+                                    <i class="bi bi-camera-video me-2"></i>
+                                    Open Detection Workspace
+                                </a>
 
-                    <p class="mb-0 opacity-75">
-                        Keep your face clearly visible and
-                        look toward the front camera.
-                    </p>
+                                <a
+                                    href="{{ url_for('dashboard.dashboard_page') }}"
+                                    class="btn btn-outline-light btn-lg px-4"
+                                >
+                                    <i class="bi bi-arrow-left me-2"></i>
+                                    Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <div class="hero-safety-visual">
+                                <div class="ai-orbit">
+                                    <i class="bi bi-eye"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
+            </section>
 
-                <div class="col-md-auto">
+            <!-- Detection workspace -->
+            <section
+                id="detectionWorkspace"
+                class="row g-4 align-items-stretch"
+            >
 
-                    <a
-                        href="{{ url_for('dashboard.dashboard_page') }}"
-                        class="btn btn-light fw-semibold"
-                    >
-                        ← Back to Dashboard
-                    </a>
-                </div>
-            </div>
-        </section>
+                <!-- Camera -->
+                <div class="col-lg-8">
+                    <article class="camera-panel">
 
-        <div class="row g-4">
-
-            <div class="col-lg-7">
-
-                <section class="card camera-card shadow-sm">
-
-                    <div class="card-body p-3 p-md-4">
-
-                        <div class="camera-stage">
-
-                            <video
-                                id="cameraVideo"
-                                autoplay
-                                muted
-                                playsinline
-                            ></video>
-
-                            <canvas
-                                id="landmarkCanvas"
-                            ></canvas>
-
-                            <div
-                                id="cameraPlaceholder"
-                                class="camera-placeholder"
-                            >
-                                <div class="camera-placeholder-icon">
-                                    📷
+                        <header class="panel-header">
+                            <div class="panel-title-group">
+                                <div class="panel-icon">
+                                    <i class="bi bi-camera-video"></i>
                                 </div>
 
-                                <h2 class="h5 fw-bold mt-3">
-                                    Camera is stopped
-                                </h2>
+                                <div>
+                                    <h2 class="h5 mb-1">
+                                        Live Camera
+                                    </h2>
 
-                                <p class="mb-0">
-                                    Press Start Detection and allow
-                                    camera permission.
+                                    <p class="small text-muted mb-0">
+                                        Real-time face and eye landmark analysis
+                                    </p>
+                                </div>
+                            </div>
+
+                            <span class="badge bg-success-subtle text-success">
+                                Local processing
+                            </span>
+                        </header>
+
+                        <div class="p-3 p-md-4">
+
+                            <div class="camera-stage">
+
+                                <video
+                                    id="cameraVideo"
+                                    autoplay
+                                    muted
+                                    playsinline
+                                ></video>
+
+                                <canvas
+                                    id="landmarkCanvas"
+                                ></canvas>
+
+                                <div
+                                    id="cameraPlaceholder"
+                                    class="camera-placeholder"
+                                >
+                                    <div class="camera-placeholder-icon">
+                                        <i class="bi bi-camera-video-off"></i>
+                                    </div>
+
+                                    <h2 class="h5 fw-bold text-white mt-4 mb-2">
+                                        Camera is currently stopped
+                                    </h2>
+
+                                    <p class="mb-0">
+                                        Press Start Detection and allow browser
+                                        camera permission to begin monitoring.
+                                    </p>
+                                </div>
+
+                                <div
+                                    id="cameraBadge"
+                                    class="camera-badge"
+                                >
+                                    Camera Off
+                                </div>
+
+                                <div
+                                    id="alertOverlay"
+                                    class="alert-overlay"
+                                >
+                                    <div>
+                                        <div class="alert-icon mx-auto">
+                                            <i class="bi bi-exclamation-triangle"></i>
+                                        </div>
+
+                                        <h2 class="display-6 fw-bold mt-4 mb-2">
+                                            Drowsiness Alert
+                                        </h2>
+
+                                        <p class="lead mb-4">
+                                            Your eyes have remained closed for
+                                            the configured alert duration.
+                                        </p>
+
+                                        <button
+                                            id="awakeOverlayButton"
+                                            type="button"
+                                            class="btn btn-light btn-lg fw-bold px-4"
+                                        >
+                                            <i class="bi bi-check-circle me-2"></i>
+                                            I Am Awake
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="control-bar">
+                                <div class="row g-2">
+
+                                    <div class="col-sm-4">
+                                        <button
+                                            id="startButton"
+                                            type="button"
+                                            class="btn btn-success control-button w-100"
+                                        >
+                                            <i class="bi bi-play-fill me-2"></i>
+                                            Start Detection
+                                        </button>
+                                    </div>
+
+                                    <div class="col-sm-4">
+                                        <button
+                                            id="stopButton"
+                                            type="button"
+                                            class="btn btn-outline-secondary control-button w-100"
+                                            disabled
+                                        >
+                                            <i class="bi bi-stop-fill me-2"></i>
+                                            Stop
+                                        </button>
+                                    </div>
+
+                                    <div class="col-sm-4">
+                                        <button
+                                            id="awakeButton"
+                                            type="button"
+                                            class="btn btn-outline-danger control-button w-100"
+                                            disabled
+                                        >
+                                            <i class="bi bi-check-circle me-2"></i>
+                                            I Am Awake
+                                        </button>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </article>
+                </div>
+
+                <!-- Live status -->
+                <div class="col-lg-4">
+                    <article class="status-panel">
+
+                        <header class="panel-header">
+                            <div class="panel-title-group">
+                                <div class="panel-icon">
+                                    <i class="bi bi-activity"></i>
+                                </div>
+
+                                <div>
+                                    <h2 class="h5 mb-1">
+                                        Live Status
+                                    </h2>
+
+                                    <p class="small text-muted mb-0">
+                                        Current detection measurements
+                                    </p>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div class="p-3 p-md-4">
+
+                            <div
+                                id="statusMessage"
+                                class="status-message mb-3"
+                                aria-live="polite"
+                            >
+                                <i class="bi bi-info-circle"></i>
+                                Ready to start detection.
+                            </div>
+
+                            <div class="row g-3">
+
+                                <div class="col-6">
+                                    <div class="metric-box">
+                                        <div class="metric-icon">
+                                            <i class="bi bi-person-bounding-box"></i>
+                                        </div>
+
+                                        <div class="metric-label">
+                                            Face
+                                        </div>
+
+                                        <div
+                                            id="faceValue"
+                                            class="metric-value"
+                                        >
+                                            Not Detected
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-6">
+                                    <div class="metric-box">
+                                        <div class="metric-icon">
+                                            <i class="bi bi-eye"></i>
+                                        </div>
+
+                                        <div class="metric-label">
+                                            Eye Status
+                                        </div>
+
+                                        <div
+                                            id="eyeValue"
+                                            class="metric-value"
+                                        >
+                                            Waiting
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-6">
+                                    <div class="metric-box">
+                                        <div class="metric-icon">
+                                            <i class="bi bi-speedometer2"></i>
+                                        </div>
+
+                                        <div class="metric-label">
+                                            EAR Value
+                                        </div>
+
+                                        <div
+                                            id="earValue"
+                                            class="metric-value"
+                                        >
+                                            0.000
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-6">
+                                    <div class="metric-box">
+                                        <div class="metric-icon">
+                                            <i class="bi bi-stopwatch"></i>
+                                        </div>
+
+                                        <div class="metric-label">
+                                            Eyes Closed
+                                        </div>
+
+                                        <div
+                                            id="closedDurationValue"
+                                            class="metric-value"
+                                        >
+                                            0.0 s
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="privacy-note mt-3">
+                                <div class="d-flex gap-3">
+                                    <div class="privacy-icon">
+                                        <i class="bi bi-shield-lock"></i>
+                                    </div>
+
+                                    <div>
+                                        <strong class="d-block mb-1">
+                                            Privacy protected
+                                        </strong>
+
+                                        <span class="small">
+                                            Camera frames are processed inside
+                                            your browser and are not uploaded
+                                            to the Flask server.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="threshold-card mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small fw-bold text-muted">
+                                        Detection threshold
+                                    </span>
+
+                                    <span class="badge bg-warning-subtle text-warning-emphasis">
+                                        EAR &lt; 0.25
+                                    </span>
+                                </div>
+
+                                <div class="threshold-line">
+                                    <span></span>
+                                </div>
+
+                                <p class="small text-muted mt-2 mb-0">
+                                    Alert activates after approximately
+                                    3 seconds of continuous eye closure.
                                 </p>
                             </div>
 
-                            <div
-                                id="cameraBadge"
-                                class="camera-badge"
-                            >
-                                Camera Off
-                            </div>
-
-                            <div
-                                id="alertOverlay"
-                                class="alert-overlay"
-                            >
-                                <div>
-
-                                    <div class="display-3">
-                                        🚨
-                                    </div>
-
-                                    <h2 class="fw-bold mt-2">
-                                        DROWSINESS ALERT!
-                                    </h2>
-
-                                    <p class="mb-3">
-                                        Your eyes have remained closed.
-                                    </p>
-
-                                    <button
-                                        id="awakeOverlayButton"
-                                        type="button"
-                                        class="btn btn-light fw-bold px-4"
-                                    >
-                                        I AM AWAKE
-                                    </button>
-                                </div>
-                            </div>
                         </div>
+                    </article>
+                </div>
 
-                        <div class="row g-2 mt-3">
+            </section>
 
-                            <div class="col-sm-4">
+            <!-- Usage tips -->
+            <section class="tip-card p-4 mt-4">
+                <div class="row align-items-center g-4">
 
-                                <button
-                                    id="startButton"
-                                    type="button"
-                                    class="btn btn-success control-button w-100"
-                                >
-                                    ▶ Start Detection
-                                </button>
-                            </div>
+                    <div class="col-lg-4">
+                        <span class="badge bg-info-subtle text-info-emphasis mb-2">
+                            Better detection
+                        </span>
 
-                            <div class="col-sm-4">
-
-                                <button
-                                    id="stopButton"
-                                    type="button"
-                                    class="btn btn-outline-secondary control-button w-100"
-                                    disabled
-                                >
-                                    ■ Stop
-                                </button>
-                            </div>
-
-                            <div class="col-sm-4">
-
-                                <button
-                                    id="awakeButton"
-                                    type="button"
-                                    class="btn btn-outline-danger control-button w-100"
-                                    disabled
-                                >
-                                    ✓ I Am Awake
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <div class="col-lg-5">
-
-                <section class="card status-card shadow-sm">
-
-                    <div class="card-body p-4">
-
-                        <h2 class="h4 fw-bold mb-3">
-                            Live Detection Status
+                        <h2 class="h4 mb-2">
+                            Camera setup tips
                         </h2>
 
-                        <div
-                            id="statusMessage"
-                            class="status-message mb-3"
-                        >
-                            Ready to start detection.
-                        </div>
+                        <p class="text-muted mb-0">
+                            Follow these recommendations for more stable
+                            eye and face detection.
+                        </p>
+                    </div>
 
+                    <div class="col-lg-8">
                         <div class="row g-3">
 
-                            <div class="col-6">
-
-                                <div class="metric-box">
-
-                                    <div class="metric-label">
-                                        FACE
+                            <div class="col-md-4">
+                                <div class="d-flex gap-3">
+                                    <div class="panel-icon">
+                                        <i class="bi bi-brightness-high"></i>
                                     </div>
 
-                                    <div
-                                        id="faceValue"
-                                        class="metric-value"
-                                    >
-                                        Not Detected
-                                    </div>
-                                </div>
-                            </div>
+                                    <div>
+                                        <strong class="d-block">
+                                            Good lighting
+                                        </strong>
 
-                            <div class="col-6">
-
-                                <div class="metric-box">
-
-                                    <div class="metric-label">
-                                        EYE STATUS
-                                    </div>
-
-                                    <div
-                                        id="eyeValue"
-                                        class="metric-value"
-                                    >
-                                        Waiting
+                                        <span class="small text-muted">
+                                            Keep your face evenly illuminated.
+                                        </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-6">
-
-                                <div class="metric-box">
-
-                                    <div class="metric-label">
-                                        EAR VALUE
+                            <div class="col-md-4">
+                                <div class="d-flex gap-3">
+                                    <div class="panel-icon">
+                                        <i class="bi bi-person-square"></i>
                                     </div>
 
-                                    <div
-                                        id="earValue"
-                                        class="metric-value"
-                                    >
-                                        0.000
+                                    <div>
+                                        <strong class="d-block">
+                                            Face the camera
+                                        </strong>
+
+                                        <span class="small text-muted">
+                                            Keep your full face inside the frame.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="d-flex gap-3">
+                                    <div class="panel-icon">
+                                        <i class="bi bi-laptop"></i>
+                                    </div>
+
+                                    <div>
+                                        <strong class="d-block">
+                                            Stable device
+                                        </strong>
+
+                                        <span class="small text-muted">
+                                            Avoid moving the camera while testing.
+                                        </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-6">
-
-                                <div class="metric-box">
-
-                                    <div class="metric-label">
-                                        EYES CLOSED
-                                    </div>
-
-                                    <div
-                                        id="closedDurationValue"
-                                        class="metric-value"
-                                    >
-                                        0.0 s
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="privacy-note p-3 mt-3">
-
-                            <strong>
-                                🔒 Privacy:
-                            </strong>
-
-                            Camera frames are processed inside
-                            your browser and are not uploaded to
-                            the Flask server.
-                        </div>
-
-                        <div class="small text-muted mt-3">
-                            Detection threshold:
-                            EAR below 0.25 for 3 seconds.
                         </div>
                     </div>
-                </section>
-            </div>
+
+                </div>
+            </section>
+
         </div>
     </main>
 
+    <!-- Bootstrap JavaScript -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+    ></script>
+
+    <!-- Existing drowsiness detection logic -->
     <script
         type="module"
         src="{{ url_for('static', filename='js/drowsiness.js') }}"
     ></script>
+
 </body>
 
 </html>
